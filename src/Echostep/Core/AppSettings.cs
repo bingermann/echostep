@@ -105,7 +105,7 @@ public sealed class AppSettings
     /// <summary>Playback speed multiplier; 1 is normal.</summary>
     [Category("Playback")] public double PlaybackSpeed { get; set; } = 1;
     /// <summary>Show the small always-on-top progress box while playing.</summary>
-    [Category("Playback")] public bool ShowOverlay { get; set; }
+    [Category("Playback")] public bool ShowProgressBox { get; set; }
     /// <summary>Hotkeys that play a macro file directly.</summary>
     [Browsable(false)] public List<MacroHotkey> MacroHotkeys { get; set; } = [];
     /// <summary>Schedules created in Windows Task Scheduler, kept here to list and remove them.</summary>

@@ -458,3 +458,47 @@ internal static class PixelUi
     public static Color ToColor(Rgb c) => Color.FromArgb(c.ToArgb());
 }
 
+
+/// <summary>
+/// A hotkey setting: click the box and press the key or combination; Clear removes it. Shows "Not set" when empty,
+/// so the field never looks blank.
+/// </summary>
+internal sealed class HotkeyField : FlowLayoutPanel
+{
+    private const string NotSet = "Not set";
+    private readonly KeyCaptureBox _box = new() { Width = 200 };
+    private string _value = "";
+
+    public HotkeyField()
+    {
+        AutoSize = true;
+        AutoSizeMode = AutoSizeMode.GrowAndShrink;
+        WrapContents = false;
+        Margin = Padding.Empty;
+        _box.Margin = new Padding(0, 4, 6, 3);
+        _box.Text = NotSet;
+        _box.Captured += (vk, mods) => _value = _box.Text = new Hotkey(mods, vk).ToString();
+        _box.Enter += (_, _) => _box.Text = "Press a key…";
+        _box.Leave += (_, _) => Show();
+        var clear = new RoundButton { Text = "Clear", AutoSize = true, Padding = new Padding(10, 2, 10, 2), Margin = new Padding(0, 2, 0, 2) };
+        clear.Click += (_, _) => Value = "";
+        Controls.Add(_box);
+        Controls.Add(clear);
+    }
+
+    /// <summary>The hotkey as text ("Ctrl+Alt+P"), or "" when not set.</summary>
+    [System.ComponentModel.Browsable(false), System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
+    public string Value
+    {
+        get => _value;
+        set
+        {
+            _value = value?.Trim() ?? "";
+            Show();
+        }
+    }
+
+    private new void Show() => _box.Text = _value.Length == 0 ? NotSet : _value;
+
+    public new bool Focus() => _box.Focus();
+}

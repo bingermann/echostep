@@ -19,7 +19,7 @@ and run it from any folder.
 
 ### Phase 1: v1
 - **File menu:** New, Open…, Save, Save As…, Recent files and Exit. Ctrl+N, Ctrl+O and Ctrl+S work. The title shows the file name, with `*` when there are unsaved changes, and you are asked before changes are lost. You can also open a `.estep` file by passing its path as the first command-line argument.
-- **Ribbon:** a tab row (File, Record and Edit, Playback, View) over the selected tab's buttons. See "Ribbon" below.
+- **Ribbon:** a tab row (File, Record and Edit, Playback, View) over the selected tab's buttons. Record and Edit and Playback always show the macro; View opens Rules, Log and Settings.
 - **Action list:** columns #, Label, Action and Parameters.
   - Double-click a row or press Enter to edit it.
   - Delete removes the selected rows. Move up and Move down (or Alt+↑/↓) reorder them. Right-click for an Insert menu.
@@ -119,7 +119,7 @@ Not taken from the spec: click-to-capture for positions (Enter still saves), tol
 - **If → Variable**: compares a variable using =, ≠, <, > or contains.
 - **Playback tab → Extras**, plus one setting:
   - **Speed** (0.25× to 10×): scales Wait and mouse-move times. Timeouts are not changed.
-  - **Progress overlay** (Settings → Playback, off by default): a click-through box in the corner showing the row, status, time and pass.
+  - **Progress box** (Settings → Playback, off by default): a click-through box in the corner showing the row, status, time and pass.
   - **Macro hotkeys…**: a hotkey plays a macro file straight away, without opening it.
   - **Schedule…**: creates Windows Task Scheduler tasks that run `Echostep.exe "file" --play --exit`.
 
@@ -219,5 +219,5 @@ build.cmd                 builds dist\Echostep.exe locally (needs the .NET 10 SD
 - By default a held drag is recorded as a click. Turn on *Record buttons and keys as separate Down and Up rows* in Settings to capture drags.
 - Wait for screen change on the entire screen compares every pixel of every monitor about ten times a second, which uses noticeable CPU on large displays; a zone is much cheaper.
 - Rule actions and macro playback can send input at the same time. If both are running, they interleave.
-- Pixel-marker overlays, the tray icon, playback speed and the other later-phase items are not in this build.
+- Pixel-marker overlays, the tray icon and the other later-phase items are not in this build.
 - The Windows limits in the spec still apply: elevated apps need an elevated Echostep, and the secure desktop and some fullscreen or DRM content can't be read. Antivirus may also flag an unsigned EXE that hooks input.

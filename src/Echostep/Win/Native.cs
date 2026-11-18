@@ -553,6 +553,13 @@ internal static class Native
         }
     }
 
+    /// <summary>Dark-mode borders for a text box, where Windows supports it.</summary>
+    public static void UseDarkEditTheme(IntPtr hWnd)
+    {
+        try { SetWindowTheme(hWnd, "DarkMode_CFD", null); }
+        catch (Exception) { /* cosmetic only */ }
+    }
+
     /// <summary>Dark scrollbars for a control, where Windows supports it.</summary>
     public static void UseDarkScrollbars(IntPtr hWnd, bool dark = true)
     {

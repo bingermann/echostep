@@ -23,7 +23,7 @@ internal sealed class MainForm : Form
     private readonly FlowLayoutPanel _startBox, _recentLinks;
     private readonly List<(Panel Page, RibbonButton? Button)> _pages = [];
     private readonly TextBox _logBox;
-    private readonly TextBox _setStop, _setPicker, _setWatch, _setStopRecording, _setPause;
+    private readonly HotkeyField _setStop, _setPicker, _setWatch, _setStopRecording, _setPause;
     private readonly CheckBox _setRecordMoves, _setWatchOnStartup, _setCrosshair, _setOverlay, _setDownUp, _setFocus, _setAbortKey, _setAbortMove,
         _setDeleteConfirm, _setHideRecording, _setStartMinimized, _setStartOnLogin;
     private readonly IntBox _setMinMove, _setMagnifier, _setSensitivity;
@@ -126,6 +126,8 @@ internal sealed class MainForm : Form
             for (var i = 0; i < tabPanels.Length; i++) tabPanels[i].Visible = i == index - 1;
             _ribbonPanel = tabPanels[index - 1];
             UpdateRibbonScroll();
+            // Record and Edit and Playback work on the macro, so they bring its page back (from Settings, Log or Rules).
+            if (index is 1 or 2 && _macroPage is not null) ShowPage(_macroPage);
         };
         _tabRow.FileClicked += () => { if (_state == AppState.Idle) _fileMenu.Show(_tabRow, new Point(0, _tabRow.Height)); };
         editTab.Visible = true;
@@ -267,26 +269,25 @@ internal sealed class MainForm : Form
             _editor!.SetShowLineNumbers(lineNumbers.IsChecked);
         };
         viewTab.Separator(84);
-        var showMacro = Big(viewTab, "Macro", Icons.Lines(px, numbered: false), 92, 56, "The action list");
-        var showRules = Big(viewTab, "Rules", Icons.Watch(px), 148, 56, "Background pixel rules");
-        var showLog = Big(viewTab, "Log", Icons.Lines(px, numbered: false), 204, 56, "What happened: playback results, rule firings, timeouts");
-        var showSettings = Big(viewTab, "Settings", Icons.Gear(px), 260, 62, "Recording, playback, hotkeys and user interface settings");
-        viewTab.Caption("Show", 92, 230);
-        viewTab.Separator(328);
-        _watchBtn = Big(viewTab, "Watch", Icons.Watch(px), 336, 64, "Run background pixel rules", ToggleWatch);
-        Big(viewTab, "Picker", Icons.Picker(px), 400, 56, "Live color picker: Enter adds a pixel rule, Esc closes", OpenPicker);
-        viewTab.Caption("Pixel rules", 336, 120);
+        var showRules = Big(viewTab, "Rules", Icons.Watch(px), 92, 56, "Background pixel rules");
+        var showLog = Big(viewTab, "Log", Icons.Lines(px, numbered: false), 148, 56, "What happened: playback results, rule firings, timeouts");
+        var showSettings = Big(viewTab, "Settings", Icons.Gear(px), 204, 62, "Appearance, recording, playback, hotkeys and other settings");
+        viewTab.Caption("Show", 92, 174);
+        viewTab.Separator(272);
+        _watchBtn = Big(viewTab, "Watch", Icons.Watch(px), 280, 64, "Run background pixel rules", ToggleWatch);
+        Big(viewTab, "Picker", Icons.Picker(px), 344, 56, "Live color picker: Enter adds a pixel rule, Esc closes", OpenPicker);
+        viewTab.Caption("Pixel rules", 280, 120);
 
         // ---- Pages under the ribbon ------------------------------------------------------------
         _content = new Panel { Dock = DockStyle.Fill, Padding = new Padding(10, 8, 10, 8) };
-        Panel Page(RibbonButton button, Control body)
+        Panel Page(RibbonButton? button, Control body)
         {
             var page = new Panel { Dock = DockStyle.Fill, Visible = false };
             var card = new Card { Dock = DockStyle.Fill };
             card.Controls.Add(body);
             page.Controls.Add(card);
             _content.Controls.Add(page);
-            button.Click += (_, _) => ShowPage(page);
+            if (button is not null) button.Click += (_, _) => ShowPage(page);
             _pages.Add((page, button));
             return page;
         }
@@ -318,7 +319,7 @@ internal sealed class MainForm : Form
         var macroHost = new Panel { Dock = DockStyle.Fill };
         macroHost.Controls.Add(_editor);
         macroHost.Controls.Add(_startPanel);
-        _macroPage = Page(showMacro, macroHost);
+        _macroPage = Page(null, macroHost); // shown by the Record and Edit and Playback tabs
 
         _rulesPanel = new RulesPanel(_engine) { Dock = DockStyle.Fill };
         _rulesPage = Page(showRules, _rulesPanel);
@@ -341,7 +342,9 @@ internal sealed class MainForm : Form
 
         // ---- Settings page ---------------------------------------------------------------------
         var settingsBody = new Panel { Dock = DockStyle.Fill, AutoScroll = true };
-        var sg = new FieldGrid { Dock = DockStyle.Top };
+        // Not docked, and both columns sized to their contents: every field keeps its full size and the page scrolls.
+        var sg = new FieldGrid { Location = new Point(0, 0) };
+        sg.ColumnStyles[1] = new ColumnStyle(SizeType.AutoSize);
         CheckBox Tick(string text) => sg.Add("", new CheckBox { Text = text, AutoSize = true });
         sg.Header("Appearance");
         _setTheme = sg.Combo("Theme", Theme.ThemeNames, null, editable: false, width: 180);
@@ -371,11 +374,12 @@ internal sealed class MainForm : Form
         _setCrosshair = Tick("Show a crosshair on the pixel a playing macro is watching");
         _setOverlay = Tick("Show a progress box in the bottom-right corner while playing (step, time, passes left)");
         sg.Header("Hotkeys");
-        _setStopRecording = sg.TextField("Stop recording", "", 200);
-        _setPause = sg.TextField("Pause / resume playback", "", 200);
-        _setStop = sg.TextField("Stop everything", "", 200);
-        _setPicker = sg.TextField("Color picker", "", 200);
-        _setWatch = sg.TextField("Pause / resume rules", "", 200);
+        sg.Add("", new Label { AutoSize = true, ForeColor = Theme.Muted, Text = "Click a box, then press the key or key combination to use." });
+        _setStopRecording = sg.Add("Stop recording", new HotkeyField());
+        _setPause = sg.Add("Pause / resume playback", new HotkeyField());
+        _setStop = sg.Add("Stop everything", new HotkeyField());
+        _setPicker = sg.Add("Color picker", new HotkeyField());
+        _setWatch = sg.Add("Pause / resume rules", new HotkeyField());
         sg.Add("", new Label
         {
             AutoSize = true, ForeColor = Theme.Muted, MaximumSize = new Size(560, 0),
@@ -403,6 +407,17 @@ internal sealed class MainForm : Form
         tips.SetToolTip(_setStop, "Stops recording and playback, halts rule actions and turns watching off. Written like Ctrl+Alt+Escape.");
         tips.SetToolTip(_setPicker, "Opens the live color picker. Written like Ctrl+Alt+P.");
         tips.SetToolTip(_setWatch, "Turns background pixel rules on and off. Written like Ctrl+Alt+W.");
+        // Every box keeps a usable size, so none can collapse to a thin line.
+        void KeepSize(Control parent)
+        {
+            foreach (Control c in parent.Controls)
+            {
+                if (c is TextBox) c.MinimumSize = new Size(Math.Max(c.Width, 60), c.Font.Height + 10);
+                KeepSize(c);
+            }
+        }
+        sg.Font = Theme.UiFont;
+        KeepSize(sg);
         settingsBody.Controls.Add(sg);
         _settingsPage = Page(showSettings, settingsBody);
         LoadSettingsFields();
@@ -1063,11 +1078,11 @@ internal sealed class MainForm : Form
     private void LoadSettingsFields()
     {
         var s = Program.Settings;
-        _setStop.Text = s.StopHotkey;
-        _setPicker.Text = s.PickerHotkey;
-        _setWatch.Text = s.WatchHotkey;
-        _setStopRecording.Text = s.StopRecordingKey;
-        _setPause.Text = s.PauseKey;
+        _setStop.Value = s.StopHotkey;
+        _setPicker.Value = s.PickerHotkey;
+        _setWatch.Value = s.WatchHotkey;
+        _setStopRecording.Value = s.StopRecordingKey;
+        _setPause.Value = s.PauseKey;
         _setRecordMoves.Checked = s.RecordMouseMoves;
         _setMinMove.Value = s.MinMoveDistance;
         _setSensitivity.Value = s.MouseSensitivity;
@@ -1077,7 +1092,7 @@ internal sealed class MainForm : Form
         _setAbortKey.Checked = s.AbortOnKeyPress;
         _setAbortMove.Checked = s.AbortOnMouseMove;
         _setCrosshair.Checked = s.ShowCrosshair;
-        _setOverlay.Checked = s.ShowOverlay;
+        _setOverlay.Checked = s.ShowProgressBox;
         _setDeleteConfirm.Checked = s.ShowDeleteConfirmation;
         _setHideRecording.Checked = s.HideWhenRecording;
         _setStartMinimized.Checked = s.StartMinimized;
@@ -1099,8 +1114,8 @@ internal sealed class MainForm : Form
         };
         foreach (var (box, what) in boxes)
         {
-            if (Hotkey.TryParse(box.Text, out _)) continue;
-            MessageBox.Show(this, $"\"{box.Text}\" is not a valid {what} hotkey. Use a key name like Enter or F8, or a combination like Ctrl+Alt+Escape.",
+            if (Hotkey.TryParse(box.Value, out _)) continue;
+            MessageBox.Show(this, $"\"{box.Value}\" is not a valid {what} hotkey. Use a key name like Enter or F8, or a combination like Ctrl+Alt+Escape.",
                 "Settings", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             box.Focus();
             return;
@@ -1110,25 +1125,25 @@ internal sealed class MainForm : Form
             MessageBox.Show(this, waitProblem, "Settings", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             return;
         }
-        Hotkey.TryParse(_setStopRecording.Text, out var stopRec);
-        Hotkey.TryParse(_setPause.Text, out var pause);
+        Hotkey.TryParse(_setStopRecording.Value, out var stopRec);
+        Hotkey.TryParse(_setPause.Value, out var pause);
         if (!stopRec.IsEmpty && stopRec == pause)
         {
             MessageBox.Show(this, "This key is already used for the other hotkey.", "Settings", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             _setPause.Focus();
             return;
         }
-        if (string.IsNullOrWhiteSpace(_setStop.Text) &&
+        if (string.IsNullOrWhiteSpace(_setStop.Value) &&
             MessageBox.Show(this, "Without a stop hotkey, an endless Goto loop can only be stopped from the window. Continue?",
                 "Settings", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
             return;
         var s = Program.Settings;
         var loginChanged = s.StartOnLogin != _setStartOnLogin.Checked;
-        s.StopHotkey = _setStop.Text.Trim();
-        s.PickerHotkey = _setPicker.Text.Trim();
-        s.WatchHotkey = _setWatch.Text.Trim();
-        s.StopRecordingKey = _setStopRecording.Text.Trim();
-        s.PauseKey = _setPause.Text.Trim();
+        s.StopHotkey = _setStop.Value.Trim();
+        s.PickerHotkey = _setPicker.Value.Trim();
+        s.WatchHotkey = _setWatch.Value.Trim();
+        s.StopRecordingKey = _setStopRecording.Value.Trim();
+        s.PauseKey = _setPause.Value.Trim();
         s.RecordMouseMoves = _setRecordMoves.Checked;
         s.MinMoveDistance = _setMinMove.Value;
         s.MouseSensitivity = _setSensitivity.Value;
@@ -1138,7 +1153,7 @@ internal sealed class MainForm : Form
         s.AbortOnKeyPress = _setAbortKey.Checked;
         s.AbortOnMouseMove = _setAbortMove.Checked;
         s.ShowCrosshair = _setCrosshair.Checked;
-        s.ShowOverlay = _setOverlay.Checked;
+        s.ShowProgressBox = _setOverlay.Checked;
         s.ShowDeleteConfirmation = _setDeleteConfirm.Checked;
         s.HideWhenRecording = _setHideRecording.Checked;
         s.StartMinimized = _setStartMinimized.Checked;
@@ -1184,7 +1199,7 @@ internal sealed class MainForm : Form
 
     private void UpdateOverlay(Player p, string elapsed)
     {
-        if (!Program.Settings.ShowOverlay)
+        if (!Program.Settings.ShowProgressBox)
         {
             _overlay.HideOverlay();
             return;

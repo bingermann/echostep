@@ -194,6 +194,9 @@ internal static class Theme
                     t.ForeColor = Text;
                     t.BorderStyle = t.Multiline ? BorderStyle.None : BorderStyle.FixedSingle;
                     if (t.Multiline) DarkScrollbars(t);
+                    else DarkEdit(t);
+                    // A read-only box (like a hotkey box) keeps the normal colors instead of turning gray.
+                    if (t.ReadOnly) t.BackColor = SurfaceAlt;
                     break;
                 case ComboBox cb:
                     cb.FlatStyle = FlatStyle.Flat;
@@ -237,6 +240,14 @@ internal static class Theme
         g.DefaultCellStyle.Padding = new Padding(4, 0, 4, 0);
         g.RowTemplate.Height = 32;
         DarkScrollbars(g);
+    }
+
+    /// <summary>Visible, themed borders for one-line text boxes in the dark palette (Windows draws them nearly black otherwise).</summary>
+    private static void DarkEdit(Control c)
+    {
+        if (!IsDark) return;
+        if (c.IsHandleCreated) Native.UseDarkEditTheme(c.Handle);
+        c.HandleCreated += (_, _) => Native.UseDarkEditTheme(c.Handle);
     }
 
     private static void DarkScrollbars(Control c)
