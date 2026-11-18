@@ -346,9 +346,26 @@ internal sealed class MainForm : Form
         var sg = new FieldGrid { Location = new Point(0, 0) };
         sg.ColumnStyles[1] = new ColumnStyle(SizeType.AutoSize);
         CheckBox Tick(string text) => sg.Add("", new CheckBox { Text = text, AutoSize = true });
+        // Each box sits in its own auto-sized row panel (like the time fields), with a minimum width. A box placed
+        // straight in the grid could be squeezed to a thin line while the page was hidden, and never grow back.
+        T Field<T>(string caption, T box, string? hint = null) where T : Control
+        {
+            box.MinimumSize = new Size(box.Width, 0);
+            if (hint is null) sg.Row(caption, box);
+            else sg.Row(caption, box, new Label { Text = hint, AutoSize = true, ForeColor = Theme.Muted });
+            return box;
+        }
+        ComboBox Pick(string caption, IEnumerable<string> items)
+        {
+            var c = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 180 };
+            foreach (var i in items) c.Items.Add(i);
+            c.SelectedIndex = 0;
+            return Field(caption, c);
+        }
+        IntBox Number(string caption, int value, int min, int max) => Field(caption, FieldGrid.NewInt(value, min, max, 90), $"{min}–{max}");
         sg.Header("Appearance");
-        _setTheme = sg.Combo("Theme", Theme.ThemeNames, null, editable: false, width: 180);
-        _setAccent = sg.Combo("Accent color", Theme.Accents.Select(a => a.Name), null, editable: false, width: 180);
+        _setTheme = Pick("Theme", Theme.ThemeNames);
+        _setAccent = Pick("Accent color", Theme.Accents.Select(a => a.Name));
         _setAccent.DrawMode = DrawMode.OwnerDrawFixed;
         _setAccent.DrawItem += (_, e) =>
         {
@@ -359,12 +376,12 @@ internal sealed class MainForm : Form
             TextRenderer.DrawText(e.Graphics, Theme.Accents[e.Index].Name, e.Font ?? Theme.UiFont,
                 new Point(e.Bounds.X + k + 12, e.Bounds.Y + 1), (e.State & DrawItemState.Selected) != 0 ? Theme.SelectionText : Theme.Text);
         };
-        _setTextSize = sg.Combo("Text size", Theme.TextSizes, null, editable: false, width: 180);
+        _setTextSize = Pick("Text size", Theme.TextSizes);
         sg.Add("", new Label { AutoSize = true, ForeColor = Theme.Muted, Text = "A new theme, accent color or text size takes effect when Echostep restarts." });
         sg.Header("Recording");
         _setRecordMoves = Tick("Record mouse paths");
-        _setMinMove = sg.Int("Minimum mouse movement (px)", 8, 0, 500);
-        _setSensitivity = sg.Int("Mouse sensitivity (1 low – 40 high)", 40, 1, 40);
+        _setMinMove = Number("Minimum mouse movement (px)", 8, 0, 500);
+        _setSensitivity = Number("Mouse sensitivity (1 low, 40 high)", 40, 1, 40);
         _setWaitThreshold = sg.Duration("Pauses longer than this become Wait", 50, 0, 60_000);
         _setDownUp = Tick("Record buttons and keys as separate Down and Up rows (captures drags and held keys)");
         _setFocus = Tick("Record a Window focus action when another window comes to the front");
@@ -393,7 +410,7 @@ internal sealed class MainForm : Form
         _setStartOnLogin = Tick("Start on login");
         sg.Header("Pixels and rules");
         _setWatchOnStartup = Tick("Start watching rules when Echostep opens");
-        _setMagnifier = sg.Int("Picker magnifier size (pixels across)", 15, 7, 41);
+        _setMagnifier = Number("Picker magnifier size (pixels across)", 15, 7, 41);
         var apply = new RoundButton { Text = "Save settings", Kind = ButtonKind.Primary, AutoSize = true };
         apply.Click += (_, _) => ApplySettings();
         var openFolder = new RoundButton { Text = "Open data folder", AutoSize = true };
@@ -401,23 +418,14 @@ internal sealed class MainForm : Form
         sg.Header("");
         sg.Row("", apply, openFolder);
         sg.Add("", new Label { AutoSize = true, ForeColor = Theme.Muted, Text = $"Settings, pixel rules and the Macros folder live in {AppPaths.DataDir}" });
+        sg.Add("", new Label { AutoSize = true, ForeColor = Theme.Muted, Text = $"Echostep {Application.ProductVersion.Split('+')[0]}" });
         var tips = new ToolTip();
         tips.SetToolTip(_setStopRecording, "One key (or a combination) that ends a recording. Default: Enter.");
         tips.SetToolTip(_setPause, "One key (or a combination) that pauses and resumes playback. Default: Escape.");
         tips.SetToolTip(_setStop, "Stops recording and playback, halts rule actions and turns watching off. Written like Ctrl+Alt+Escape.");
         tips.SetToolTip(_setPicker, "Opens the live color picker. Written like Ctrl+Alt+P.");
         tips.SetToolTip(_setWatch, "Turns background pixel rules on and off. Written like Ctrl+Alt+W.");
-        // Every box keeps a usable size, so none can collapse to a thin line.
-        void KeepSize(Control parent)
-        {
-            foreach (Control c in parent.Controls)
-            {
-                if (c is TextBox) c.MinimumSize = new Size(Math.Max(c.Width, 60), c.Font.Height + 10);
-                KeepSize(c);
-            }
-        }
         sg.Font = Theme.UiFont;
-        KeepSize(sg);
         settingsBody.Controls.Add(sg);
         _settingsPage = Page(showSettings, settingsBody);
         LoadSettingsFields();

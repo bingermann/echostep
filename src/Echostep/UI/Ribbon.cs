@@ -136,9 +136,13 @@ internal sealed class RibbonTabRow : Control
 
     public void Select(int index)
     {
-        if (index <= 0 || index >= _tabs.Length || index == _selected) return;
-        _selected = index;
-        Invalidate();
+        if (index <= 0 || index >= _tabs.Length) return;
+        if (index != _selected)
+        {
+            _selected = index;
+            Invalidate();
+        }
+        // Raised on every click, also for the tab that is already selected (e.g. to get back to the macro from Settings).
         TabSelected?.Invoke(index);
     }
 

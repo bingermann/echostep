@@ -476,6 +476,7 @@ internal sealed class HotkeyField : FlowLayoutPanel
         WrapContents = false;
         Margin = Padding.Empty;
         _box.Margin = new Padding(0, 4, 6, 3);
+        _box.MinimumSize = new Size(_box.Width, 0);
         _box.Text = NotSet;
         _box.Captured += (vk, mods) => _value = _box.Text = new Hotkey(mods, vk).ToString();
         _box.Enter += (_, _) => _box.Text = "Press a key…";
