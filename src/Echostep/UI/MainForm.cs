@@ -24,7 +24,7 @@ internal sealed class MainForm : Form
     private readonly List<(Panel Page, RibbonButton? Button)> _pages = [];
     private readonly TextBox _logBox;
     private readonly TextBox _setStop, _setPicker, _setWatch, _setStopRecording, _setPause;
-    private readonly CheckBox _setRecordMoves, _setWatchOnStartup, _setCrosshair, _setDownUp, _setFocus, _setAbortKey, _setAbortMove,
+    private readonly CheckBox _setRecordMoves, _setWatchOnStartup, _setCrosshair, _setOverlay, _setDownUp, _setFocus, _setAbortKey, _setAbortMove,
         _setDeleteConfirm, _setHideRecording, _setStartMinimized, _setStartOnLogin;
     private readonly IntBox _setMinMove, _setMagnifier, _setSensitivity;
     private readonly DurationField _setWaitThreshold;
@@ -245,14 +245,11 @@ internal sealed class MainForm : Form
         playTab.Separator(892);
         _stepBtn = Big(playTab, "Step", Icons.StepIcon(px), 900, 56, "While paused: run one row, then pause again", () => _player?.Step());
         var playExpertSep = playTab.Put(new Panel { BackColor = Theme.Border }, 962, 4, 1, 90);
-        var speedNote = playTab.Note("Speed:", 970, 8);
+        var speedNote = playTab.Note("Speed:", 970, 22);
         var speedIndex = Array.FindIndex(Speeds, v => Math.Abs(v - s0.PlaybackSpeed) < 0.001);
         var speed = playTab.Put(Choice(Speeds.Select(v => v.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "×").ToArray(),
-            speedIndex < 0 ? 2 : speedIndex, i => Program.Settings.PlaybackSpeed = Speeds[i]), 1020, 8, 80, 22,
+            speedIndex < 0 ? 2 : speedIndex, i => Program.Settings.PlaybackSpeed = Speeds[i]), 1020, 20, 80, 22,
             "Plays Wait and mouse-move times faster or slower. Timeouts and Wait until time are not changed.");
-        var overlay = playTab.Put(new CheckBox { Text = "Progress overlay", Checked = s0.ShowOverlay }, 970, 37, 132, 19,
-            "Show a small box in the corner while playing: the step, time and passes left");
-        overlay.CheckedChanged += (_, _) => Program.Settings.ShowOverlay = overlay.Checked;
         var scheduleBtn = playTab.Put(new RibbonButton("Schedule…", null, RibbonStyle.Small), 1110, 8, 130, 25, "Play a macro at set times with Windows Task Scheduler");
         scheduleBtn.Click += (_, _) => OpenSchedules();
         var hotkeysBtn = playTab.Put(new RibbonButton("Macro hotkeys…", null, RibbonStyle.Small), 1110, 33, 130, 25, "Hotkeys that play a macro file straight away");
@@ -372,6 +369,7 @@ internal sealed class MainForm : Form
         _setAbortKey = Tick("Abort playback on key press");
         _setAbortMove = Tick("Abort playback on mouse move");
         _setCrosshair = Tick("Show a crosshair on the pixel a playing macro is watching");
+        _setOverlay = Tick("Show a progress box in the bottom-right corner while playing (step, time, passes left)");
         sg.Header("Hotkeys");
         _setStopRecording = sg.TextField("Stop recording", "", 200);
         _setPause = sg.TextField("Pause / resume playback", "", 200);
@@ -398,7 +396,7 @@ internal sealed class MainForm : Form
         openFolder.Click += (_, _) => Process.Start(new ProcessStartInfo("explorer.exe", $"\"{AppPaths.DataDir}\"") { UseShellExecute = true });
         sg.Header("");
         sg.Row("", apply, openFolder);
-        sg.Add("", new Label { AutoSize = true, ForeColor = Theme.Muted, Text = $"settings.json and rules.json live in {AppPaths.DataDir}" });
+        sg.Add("", new Label { AutoSize = true, ForeColor = Theme.Muted, Text = $"Settings, pixel rules and the Macros folder live in {AppPaths.DataDir}" });
         var tips = new ToolTip();
         tips.SetToolTip(_setStopRecording, "One key (or a combination) that ends a recording. Default: Enter.");
         tips.SetToolTip(_setPause, "One key (or a combination) that pauses and resumes playback. Default: Escape.");
@@ -890,7 +888,7 @@ internal sealed class MainForm : Form
         using var dlg = new OpenFileDialog
         {
             Filter = FileFilter,
-            InitialDirectory = _filePath is null ? null : Path.GetDirectoryName(_filePath),
+            InitialDirectory = _filePath is null ? AppPaths.MacrosDir : Path.GetDirectoryName(_filePath),
         };
         if (dlg.ShowDialog(this) == DialogResult.OK) LoadFile(dlg.FileName);
     }
@@ -948,7 +946,7 @@ internal sealed class MainForm : Form
             DefaultExt = "estep",
             AddExtension = true,
             FileName = _filePath is null ? $"Macro_{DateTime.Now:yyyy-MM-dd}.estep" : Path.GetFileName(_filePath),
-            InitialDirectory = _filePath is null ? null : Path.GetDirectoryName(_filePath),
+            InitialDirectory = _filePath is null ? AppPaths.MacrosDir : Path.GetDirectoryName(_filePath),
         };
         return dlg.ShowDialog(this) == DialogResult.OK && SaveTo(dlg.FileName);
     }
@@ -1079,6 +1077,7 @@ internal sealed class MainForm : Form
         _setAbortKey.Checked = s.AbortOnKeyPress;
         _setAbortMove.Checked = s.AbortOnMouseMove;
         _setCrosshair.Checked = s.ShowCrosshair;
+        _setOverlay.Checked = s.ShowOverlay;
         _setDeleteConfirm.Checked = s.ShowDeleteConfirmation;
         _setHideRecording.Checked = s.HideWhenRecording;
         _setStartMinimized.Checked = s.StartMinimized;
@@ -1139,6 +1138,7 @@ internal sealed class MainForm : Form
         s.AbortOnKeyPress = _setAbortKey.Checked;
         s.AbortOnMouseMove = _setAbortMove.Checked;
         s.ShowCrosshair = _setCrosshair.Checked;
+        s.ShowOverlay = _setOverlay.Checked;
         s.ShowDeleteConfirmation = _setDeleteConfirm.Checked;
         s.HideWhenRecording = _setHideRecording.Checked;
         s.StartMinimized = _setStartMinimized.Checked;

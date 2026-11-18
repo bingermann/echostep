@@ -105,7 +105,7 @@ public sealed class AppSettings
     /// <summary>Playback speed multiplier; 1 is normal.</summary>
     [Category("Playback")] public double PlaybackSpeed { get; set; } = 1;
     /// <summary>Show the small always-on-top progress box while playing.</summary>
-    [Category("Playback")] public bool ShowOverlay { get; set; } = true;
+    [Category("Playback")] public bool ShowOverlay { get; set; }
     /// <summary>Hotkeys that play a macro file directly.</summary>
     [Browsable(false)] public List<MacroHotkey> MacroHotkeys { get; set; } = [];
     /// <summary>Schedules created in Windows Task Scheduler, kept here to list and remove them.</summary>
@@ -172,7 +172,11 @@ public sealed class AppSettings
     }
 }
 
-/// <summary>Where settings.json and rules.json live: beside the EXE when writable (portable), else %APPDATA%\Echostep.</summary>
+/// <summary>
+/// Where settings.json, rules.json and the Macros folder live: the folder Echostep is installed in (or the portable
+/// EXE's folder), so the app and everything it saves stay together. Only if that folder cannot be written to
+/// does it fall back to %APPDATA%\Echostep.
+/// </summary>
 public static class AppPaths
 {
     private static string? _dataDir;
@@ -181,6 +185,18 @@ public static class AppPaths
 
     public static string SettingsFile => Path.Combine(DataDir, "settings.json");
     public static string RulesFile => Path.Combine(DataDir, "rules.json");
+
+    /// <summary>Default folder for saving and opening macros (created when first needed).</summary>
+    public static string MacrosDir
+    {
+        get
+        {
+            var dir = Path.Combine(DataDir, "Macros");
+            try { Directory.CreateDirectory(dir); }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return DataDir; }
+            return dir;
+        }
+    }
 
     private static string ChooseDataDir()
     {

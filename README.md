@@ -1,46 +1,19 @@
 # Echostep
 
-A single portable Windows EXE (.NET 10, WinForms, self-contained, no installer) that records and replays mouse and keyboard macros. Pixel-color checks let a macro react to what is on screen, and background pixel rules run actions when a pixel matches.
-
-This build covers **Phase 1 (v1)** and **Phase 2 (pixel tools and background rules)** of the feature spec, plus the features of the **Echostep v1 spec** (see "Added from the Echostep v1 spec").
+Record and replay mouse and keyboard macros on Windows. Macros can wait for colors or images on screen,
+make decisions, loop, and run on a schedule.
 
 ## Install
 
-Download **Echostep-Setup-x.y.z.exe** from the repository's **Releases** page and run it. You don't need
-a command prompt, the .NET SDK or anything else. The installer:
+**[⬇ Download Echostep for Windows](https://github.com/bingermann/Echostep/releases/latest/download/Echostep-Setup.exe)**
 
-- installs for your user, with no admin prompt (it can install for all users instead);
-- lets you choose the folder;
-- adds a Start menu entry, plus a desktop shortcut and `.estep` file association if you tick them;
-- appears in Windows' Installed apps list, so you can uninstall it from there.
+Run the downloaded file and click through the installer. It asks where to put Echostep: the app, your saved
+macros (in `Macros`) and its settings all live in that one folder. If Windows says "Windows protected your PC",
+click **More info → Run anyway** (the installer isn't code-signed).
 
-The installer isn't code-signed, so Windows may show "Windows protected your PC". Click **More info → Run anyway**.
-`Echostep.exe` on the same page is the portable version: no install, just run it.
-
-### Making a new release (maintainer)
-
-GitHub Actions builds everything on a Windows machine in the cloud (`.github/workflows/release.yml`):
-push a tag such as `v0.4.0`, or use **Actions → Build installer → Run workflow**. It runs the core tests, builds
-`Echostep.exe`, wraps it in an installer with Inno Setup (`installer/Echostep.iss`), and attaches both files to
-a release for that tag.
-
-## Build the EXE
-
-You need the [.NET 10 SDK](https://dotnet.microsoft.com/download) on a Windows PC. From this folder, run:
-
-```
-build.cmd
-```
-
-or
-
-```
-dotnet publish src\Echostep -c Release -o dist
-```
-
-The result is `dist\Echostep.exe`, one file. Copy it anywhere; nothing else is needed to run it. `settings.json` and `rules.json` are kept next to the EXE. If that folder is read-only, they go in `%APPDATA%\Echostep` instead.
-
-To check the platform-independent core on any OS, run `dotnet run --project tests/CoreTests` (315 checks).
+No install wanted? Download the
+[portable version](https://github.com/bingermann/Echostep/releases/latest/download/Echostep.exe)
+and run it from any folder.
 
 ## What's in it
 
@@ -144,9 +117,9 @@ Not taken from the spec: click-to-capture for positions (Enter still saves), tol
   - **Run / open**: opens a program, file, folder or URL, and can wait until it closes.
   - **Message / sound**: plays a sound, shows a message, or asks Yes/No (Yes and No can go to different rows).
 - **If → Variable**: compares a variable using =, ≠, <, > or contains.
-- **Playback tab → Extras**:
+- **Playback tab → Extras**, plus one setting:
   - **Speed** (0.25× to 10×): scales Wait and mouse-move times. Timeouts are not changed.
-  - **Progress overlay**: a click-through box in the corner showing the row, status, time and pass.
+  - **Progress overlay** (Settings → Playback, off by default): a click-through box in the corner showing the row, status, time and pass.
   - **Macro hotkeys…**: a hotkey plays a macro file straight away, without opening it.
   - **Schedule…**: creates Windows Task Scheduler tasks that run `Echostep.exe "file" --play --exit`.
 
@@ -192,11 +165,39 @@ Macros are `.estep` files: UTF-8 JSON with one action per line, which keeps git 
 | `if` | `condition`: `time` (with `compare` `before`/`after`/`between`, `time`, and `time2` for between), `day` (with `days`, e.g. `["sat","sun"]`) or `window` (with `title`, `titleMatch`, `state` `open`/`front`); optional `then`, `else` |
 | `windowFocus` | `program`, `titleMatch` (`exact`/`begins`/`ends`/`contains`/`any`), `title`, optional `left`, `top`, `width`, `height`, `timeoutMs`, `onTimeout`, `then` |
 
-Every action can also have a `label`, and optionally `comment`, `disabled`, `breakpoint`, `rowColor`, `group` and `groupColor`. The file itself may carry `screen`, the monitor layout it was recorded on. `examples/` contains the spec's dialog-loop macro and its `rules.json`.
+Every action can also have a `label`, and optionally `comment`, `disabled`, `breakpoint`, `rowColor`, `group` and `groupColor`. The file itself may carry `screen`, the monitor layout it was recorded on. `examples/` contains the spec's dialog-loop macro and its `rules.json` (the installer puts them in `Macros\Examples`).
 
 **One addition to the spec:** `stop` is a reserved label, alongside `start`, `end` and numbers. It is valid as any jump target and stops playback. `onTimeout` defaults to `stop`.
 
-## Project layout
+## For developers
+
+### Make a new release
+
+Push a version tag, e.g. `git tag v0.4.1` then `git push origin v0.4.1`. GitHub Actions
+(`.github/workflows/release.yml`) runs the tests, builds `Echostep.exe`, wraps it in an installer
+(`installer/Echostep.iss`, Inno Setup) and publishes both on the Releases page. The download links at the
+top always point to the newest release.
+
+### Build the EXE yourself
+
+You need the [.NET 10 SDK](https://dotnet.microsoft.com/download) on a Windows PC. From this folder, run:
+
+```
+build.cmd
+```
+
+or
+
+```
+dotnet publish src\Echostep -c Release -o dist
+```
+
+The result is `dist\Echostep.exe`, one file. Copy it anywhere; nothing else is needed to run it. `settings.json`, `rules.json` and the `Macros` folder are kept next to the EXE. If that folder is read-only, they go in `%APPDATA%\Echostep` instead.
+
+To check the platform-independent core on any OS, run `dotnet run --project tests/CoreTests` (352 checks).
+
+
+### Project layout
 
 ```
 src/Echostep/
@@ -207,7 +208,7 @@ src/Echostep/
 tests/CoreTests/          tests for Core (the release build runs them first)
 installer/Echostep.iss    the installer definition (Inno Setup)
 .github/workflows/        the GitHub Actions build that makes the installer and the release
-examples/                 sample macro and rules file (also installed with the app)
+examples/                 sample macro and rules file (installed in Macros\Examples)
 build.cmd                 builds dist\Echostep.exe locally (needs the .NET 10 SDK)
 ```
 

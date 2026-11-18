@@ -56,10 +56,10 @@ jobs:
         with:
           name: Echostep ${{ steps.v.outputs.version }}
           files: |
-            installer/Output/Echostep-Setup-${{ steps.v.outputs.version }}.exe
+            installer/Output/Echostep-Setup.exe
             dist/Echostep.exe
           body: |
-            **Download `Echostep-Setup-${{ steps.v.outputs.version }}.exe` and run it.**
+            **Download `Echostep-Setup.exe` and run it.**
             Windows may show "Windows protected your PC" because the installer isn't code-signed. Click **More info → Run anyway**.
 
             `Echostep.exe` is the portable version: no install needed, just run it.
