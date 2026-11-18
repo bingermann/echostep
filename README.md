@@ -5,7 +5,7 @@ make decisions, loop, and run on a schedule.
 
 ## Install
 
-**[⬇ Download Echostep for Windows](https://github.com/bingermann/Echostep/releases/latest/download/Echostep-Setup.exe)**
+**[⬇ Download Echostep for Windows](https://github.com/bingermann/echostep/releases/download/v0.4.0/Echostep-Setup-0.4.0.exe)**
 
 Run the downloaded file and click through the installer. It asks where to put Echostep: the app, your saved
 macros (in `Macros`) and its settings all live in that one folder. If Windows says "Windows protected your PC",
