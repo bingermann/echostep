@@ -1,0 +1,65 @@
+# Builds Echostep on a Windows machine in the cloud and publishes the installer as a GitHub release.
+# Runs when you push a version tag (like v0.4.0), or from the Actions tab ("Run workflow").
+name: Build installer
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+
+      - name: Version
+        id: v
+        shell: pwsh
+        run: |
+          if ("${{ github.ref_type }}" -eq "tag") { $v = "${{ github.ref_name }}".TrimStart("v") }
+          else { $v = ([xml](Get-Content src/Echostep/Echostep.csproj)).Project.PropertyGroup.Version | Where-Object { $_ } | Select-Object -First 1 }
+          "version=$v" >> $env:GITHUB_OUTPUT
+
+      - name: Core tests
+        run: dotnet run --project tests/CoreTests -c Release
+
+      - name: Build Echostep.exe
+        run: dotnet publish src/Echostep/Echostep.csproj -c Release -o dist -p:Version=${{ steps.v.outputs.version }}
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup -y --no-progress }
+
+      - name: Build installer
+        shell: pwsh
+        run: '& "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" "/DAppVersion=${{ steps.v.outputs.version }}" installer\Echostep.iss'
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Echostep-${{ steps.v.outputs.version }}
+          path: |
+            installer/Output/*.exe
+            dist/Echostep.exe
+
+      - name: Publish release
+        if: github.ref_type == 'tag'
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Echostep ${{ steps.v.outputs.version }}
+          files: |
+            installer/Output/Echostep-Setup-${{ steps.v.outputs.version }}.exe
+            dist/Echostep.exe
+          body: |
+            **Download `Echostep-Setup-${{ steps.v.outputs.version }}.exe` and run it.**
+            Windows may show "Windows protected your PC" because the installer isn't code-signed. Click **More info → Run anyway**.
+
+            `Echostep.exe` is the portable version: no install needed, just run it.

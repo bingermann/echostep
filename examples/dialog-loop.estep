@@ -1,0 +1,13 @@
+{
+  "format": "Echostep",
+  "version": 1,
+  "actions": [
+    {"type":"click","x":400,"y":300,"button":"left"},
+    {"type":"waitPixel","x":960,"y":640,"color":"#2D7DD2","tolerance":12,"timeoutMs":5000,"onTimeout":"retry"},
+    {"type":"key","key":"Enter"},
+    {"type":"repeat","target":"start","count":10},
+    {"type":"goto","target":"end"},
+    {"label":"retry","type":"key","key":"Escape"},
+    {"type":"goto","target":"start"}
+  ]
+}

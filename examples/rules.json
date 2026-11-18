@@ -1,0 +1,21 @@
+{
+  "rules": [
+    {
+      "name": "Dialog OK appears",
+      "x": 960,
+      "y": 640,
+      "color": "#2D7DD2",
+      "tolerance": 12,
+      "mode": "onMatch",
+      "intervalMs": 50,
+      "holdForMs": 100,
+      "cooldownMs": 1000,
+      "enabled": true,
+      "actions": [
+        { "type": "click", "x": 960, "y": 640 },
+        { "type": "wait", "ms": 250 },
+        { "type": "key", "key": "Enter" }
+      ]
+    }
+  ]
+}

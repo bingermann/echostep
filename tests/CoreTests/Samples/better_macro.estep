@@ -1,0 +1,21 @@
+{
+  "format": "Echostep",
+  "version": 2,
+  "screen": "1 monitor: 1920x1080 at 0,0",
+  "actions": [
+    {"type":"waitUntil","time":"05:45","comment":"Start time"},
+    {"type":"click","label":"Init Refresh","x":140,"y":71,"button":"left","comment":"Init refresh","group":"g1","groupColor":"#263F66"},
+    {"type":"wait","ms":15000,"unit":"s","comment":"Wait for refresh","group":"g1","groupColor":"#263F66"},
+    {"type":"ifPixel","label":"Check if in live feed","x":906,"y":539,"color":"#EFEFF1","tolerance":12,"else":"Check live","group":"g2","groupColor":"#5A2A2E"},
+    {"type":"click","x":928,"y":549,"button":"left","group":"g2","groupColor":"#5A2A2E"},
+    {"type":"wait","ms":3000,"unit":"s","group":"g2","groupColor":"#5A2A2E"},
+    {"type":"waitPixel","label":"Check live","x":433,"y":945,"color":"#EB0400","tolerance":12,"timeoutMs":10000,"onTimeout":"Init Refresh","then":"Wait for green","comment":"Check Live Status.(start if not, next if)","group":"g1","groupColor":"#263F66"},
+    {"type":"click","x":140,"y":71,"button":"left","comment":"Refresh"},
+    {"type":"wait","ms":10000,"unit":"s","comment":"Wait for refresh"},
+    {"type":"waitPixel","label":"Wait for green","x":1620,"y":975,"color":"#00AD69","tolerance":40,"timeoutMs":1200000,"onTimeout":"stop","comment":"Wait for green","group":"g3","groupColor":"#24492F"},
+    {"type":"click","x":1624,"y":980,"button":"left","comment":"Claim green","group":"g3","groupColor":"#24492F"},
+    {"type":"move","x":-200,"y":-200,"comment":"Move mouse to temp spot","group":"g3","groupColor":"#24492F"},
+    {"type":"wait","ms":1000},
+    {"type":"repeat","target":"Wait for green","count":5,"after":"Init Refresh","comment":"Repeat 5, then refresh"}
+  ]
+}

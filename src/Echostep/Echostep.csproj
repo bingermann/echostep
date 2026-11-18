@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <RootNamespace>Echostep</RootNamespace>
+    <AssemblyName>Echostep</AssemblyName>
+    <Version>0.4.0</Version>
+    <Product>Echostep</Product>
+    <!-- The name Task Manager, Windows Search and "Open with" show (the EXE's file description). -->
+    <AssemblyTitle>Echostep</AssemblyTitle>
+    <Company>Echostep</Company>
+    <Copyright>© 2026 Björn</Copyright>
+    <Description>Records and replays mouse and keyboard macros, with pixel-color waits and background pixel rules.</Description>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <!-- The EXE's icon in Explorer, and (via the embedded copy below) the window and taskbar icon. -->
+    <ApplicationIcon>app.ico</ApplicationIcon>
+    <ApplicationHighDpiMode>PerMonitorV2</ApplicationHighDpiMode>
+    <ApplicationVisualStyles>true</ApplicationVisualStyles>
+    <!-- Lets the project build (not run) on Linux/macOS too. -->
+    <EnableWindowsTargeting>true</EnableWindowsTargeting>
+  </PropertyGroup>
+
+  <!-- dotnet publish -c Release  →  one portable Echostep.exe, no installer, no .NET install needed -->
+  <PropertyGroup>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <DebugType>embedded</DebugType>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="app.ico" LogicalName="Echostep.app.ico" />
+  </ItemGroup>
+
+</Project>
