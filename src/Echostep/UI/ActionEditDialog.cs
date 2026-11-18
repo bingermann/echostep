@@ -254,7 +254,7 @@ internal sealed partial class ActionEditDialog : Form
             {
                 _grid.Note("Pauses playback for a set time.");
                 var amount = new TextBox { Text = WaitAction.FormatAmount(w.Amount), Width = 110, TextAlign = HorizontalAlignment.Right };
-                var unit = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 140 };
+                var unit = new ThemedCombo { DropDownStyle = ComboBoxStyle.DropDownList, Width = 140 };
                 unit.Items.AddRange(["milliseconds", "seconds", "minutes", "hours"]);
                 unit.SelectedIndex = (int)w.Unit;
                 _grid.Row("Wait for", amount, unit);
@@ -337,10 +337,10 @@ internal sealed partial class ActionEditDialog : Form
                 _tips.SetToolTip(tol, "A pixel counts as changed when any color channel differs by more than this (0–255). A little tolerance ignores video noise.");
                 _tips.SetToolTip(define, "Dims the screen so you can drag a rectangle around the area to watch.");
                 _grid.Header("If a change is found");
-                var mouse = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 150 };
+                var mouse = new ThemedCombo { DropDownStyle = ComboBoxStyle.DropDownList, Width = 150 };
                 mouse.Items.AddRange(["No mouse action", "Move", "Left-click", "Right-click", "Middle-click", "Double-click"]);
                 mouse.SelectedIndex = (int)ws.Mouse;
-                var anchor = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 130 };
+                var anchor = new ThemedCombo { DropDownStyle = ComboBoxStyle.DropDownList, Width = 130 };
                 anchor.Items.AddRange(["Centered", "Top-left", "Top-right", "Bottom-left", "Bottom-right"]);
                 anchor.SelectedIndex = (int)ws.Anchor;
                 _grid.Row("Mouse action", mouse, new Label { Text = "on the changed area:", AutoSize = true }, anchor);
@@ -431,9 +431,9 @@ internal sealed partial class ActionEditDialog : Form
                 _tips.SetToolTip(pickWindow, "Point at a window and press Enter to take its title (Esc cancels).");
 
                 // Variable
-                var varName = new ComboBox { DropDownStyle = ComboBoxStyle.DropDown, Width = 150, Text = cond.Variable ?? "count" };
+                var varName = new ThemedCombo { DropDownStyle = ComboBoxStyle.DropDown, Width = 150, Text = cond.Variable ?? "count" };
                 varName.Items.AddRange(VariableSuggestions().Cast<object>().ToArray());
-                var varCompare = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 110 };
+                var varCompare = new ThemedCombo { DropDownStyle = ComboBoxStyle.DropDownList, Width = 110 };
                 varCompare.Items.AddRange(["=", "≠", "<", ">", "contains"]);
                 varCompare.SelectedIndex = (int)(cond.VarCompare ?? VarCompare.Equal);
                 var varValue = new TextBox { Text = cond.Value ?? "", Width = 150 };
@@ -570,7 +570,7 @@ internal sealed partial class ActionEditDialog : Form
                 var program = new TextBox { Text = wf.Program ?? "", Width = 220 };
                 var capture = new RoundButton { Text = "Capture…", AutoSize = true };
                 _grid.Row("Program (exe)", program, capture);
-                var match = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 110 };
+                var match = new ThemedCombo { DropDownStyle = ComboBoxStyle.DropDownList, Width = 110 };
                 match.Items.AddRange(["Is exactly", "Begins with", "Ends with", "Contains", "Any"]);
                 match.SelectedIndex = (int)wf.TitleMatch;
                 var title = new TextBox { Text = wf.Title ?? "", Width = 260 };
@@ -657,7 +657,7 @@ internal sealed partial class ActionEditDialog : Form
     private (IntBox Tolerance, ComboBox Match) ToleranceFields(PixelActionBase p)
     {
         var tol = FieldGrid.NewInt(p.Tolerance, 0, Rgb.MaxTolerance(MatchMode.Distance), 70);
-        var match = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 190 };
+        var match = new ThemedCombo { DropDownStyle = ComboBoxStyle.DropDownList, Width = 190 };
         match.Items.AddRange(["per channel (0–255)", "color distance (0–442)"]);
         match.SelectedIndex = (int)p.Match;
         _grid.Row("Tolerance", tol, match);

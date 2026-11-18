@@ -187,7 +187,7 @@ internal sealed class ActionListEditor : UserControl
 
         if (showInsertButton)
         {
-            var menu = new ContextMenuStrip();
+            var menu = Theme.Track(new ContextMenuStrip());
             AddGroupedItems(menu.Items, InsertNew);
             Button? insert = null;
             insert = Btn(Glyphs.PlusMenu, "Insert an action", () => menu.Show(insert!, new Point(0, insert!.Height)), ButtonKind.Primary, 14);
@@ -199,7 +199,7 @@ internal sealed class ActionListEditor : UserControl
         Btn(Glyphs.Search, "Find (Ctrl+F)", () => OpenFind(false));
 
         // ---- Right-click menu ------------------------------------------------------------------
-        var ctx = new ContextMenuStrip();
+        var ctx = Theme.Track(new ContextMenuStrip());
         ToolStripMenuItem Item(string text, Action click, string? shortcut = null)
         {
             var mi = new ToolStripMenuItem(text, null, (_, _) => click());

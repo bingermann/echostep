@@ -14,7 +14,7 @@ AppVersion={#AppVersion}
 AppVerName=Echostep {#AppVersion}
 AppPublisher=Echostep
 VersionInfoVersion={#AppVersion}
-; One folder holds the app and everything it saves (Macros, settings.json, rules.json); the user picks it.
+; One folder holds the app and everything it saves (macros, settings.json, rules.json); the user picks it.
 ; Per-user install with no admin prompt, so the folder is always writable.
 PrivilegesRequired=lowest
 DefaultDirName={localappdata}\Programs\Echostep
@@ -40,15 +40,11 @@ Name: associate; Description: "Open .estep macro files with Echostep"; GroupDesc
 
 [Files]
 Source: "..\dist\Echostep.exe"; DestDir: "{app}"; Flags: ignoreversion
-Source: "..\examples\*"; DestDir: "{app}\Macros\Examples"; Flags: ignoreversion recursesubdirs
+Source: "..\examples\*"; DestDir: "{app}\Examples"; Flags: ignoreversion recursesubdirs
 Source: "..\README.md"; DestDir: "{app}"; Flags: ignoreversion
-
-[Dirs]
-Name: "{app}\Macros"
 
 [Icons]
 Name: "{autoprograms}\Echostep"; Filename: "{app}\Echostep.exe"
-Name: "{autoprograms}\Echostep macros"; Filename: "{app}\Macros"
 Name: "{autodesktop}\Echostep"; Filename: "{app}\Echostep.exe"; Tasks: desktopicon
 
 [Registry]
@@ -63,7 +59,7 @@ Root: HKA; Subkey: "Software\Classes\Echostep.Macro\shell\open\command"; ValueTy
 Filename: "{app}\Echostep.exe"; Description: "Start Echostep now"; Flags: nowait postinstall skipifsilent
 
 [Messages]
-SelectDirLabel3=Echostep and everything it saves (your macros, settings.json and rules.json) will be kept together in this folder.
+SelectDirLabel3=Echostep and everything it saves (your macros, settings.json and rules.json) will be kept together in this folder. You can pick a different folder for macros later in Settings.
 SelectDirBrowseLabel=Click Next to use this folder, or Browse to choose another (for example a folder in Documents). It must be a folder you can write to.
 
 [UninstallDelete]

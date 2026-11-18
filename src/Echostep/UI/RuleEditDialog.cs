@@ -44,12 +44,12 @@ internal sealed class RuleEditDialog : Form
         _color = grid.Add("Color", new ColorField(_work.Color));
 
         _tol = FieldGrid.NewInt(_work.Tolerance, 0, 442, 70);
-        _match = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 170 };
+        _match = new ThemedCombo { DropDownStyle = ComboBoxStyle.DropDownList, Width = 170 };
         _match.Items.AddRange(["per channel (0–255)", "color distance (0–442)"]);
         _match.SelectedIndex = (int)_work.Match;
         grid.Row("Tolerance", _tol, _match);
 
-        _mode = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 300 };
+        _mode = new ThemedCombo { DropDownStyle = ComboBoxStyle.DropDownList, Width = 300 };
         _mode.Items.AddRange([
             "on match: the pixel starts matching the color",
             "on mismatch: the pixel stops matching the color",
@@ -89,7 +89,7 @@ internal sealed class RuleEditDialog : Form
             _mode.SelectedIndex == (int)RuleMode.OnChange ? null : _color.Value, (int)_tol.Value, (MatchMode)_match.SelectedIndex);
         browse.Click += (_, _) =>
         {
-            using var dlg = new OpenFileDialog { Filter = "Echostep files (*.estep;*.omr;*.orec)|*.estep;*.omr;*.orec|All files|*.*", InitialDirectory = AppPaths.DataDir };
+            using var dlg = new OpenFileDialog { Filter = "Echostep files (*.estep;*.omr;*.orec)|*.estep;*.omr;*.orec|All files|*.*", InitialDirectory = AppPaths.MacrosDir };
             if (dlg.ShowDialog(this) != DialogResult.OK) return;
             var rel = Path.GetRelativePath(AppPaths.DataDir, dlg.FileName);
             _macroFile.Text = rel.StartsWith("..", StringComparison.Ordinal) ? dlg.FileName : rel;

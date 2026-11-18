@@ -193,6 +193,9 @@ internal sealed class RulesPanel : UserControl
     /// <summary>Gives the engine fresh copies; if watching, the new rules are picked up on the next poll.</summary>
     private void PushToEngine() => _engine.SetRules(_rules);
 
+    /// <summary>Redraws the rows (after a theme change).</summary>
+    public void RefreshRows() => RebuildRows();
+
     private void RebuildRows()
     {
         var sel = SelectedIndex;

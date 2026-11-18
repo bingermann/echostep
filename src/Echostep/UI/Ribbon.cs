@@ -16,7 +16,8 @@ internal enum RibbonStyle
 /// <summary>An owner-drawn ribbon button. Give it a menu to make it a drop-down.</summary>
 internal sealed class RibbonButton : Control
 {
-    private readonly Bitmap? _icon;
+    private Bitmap? _icon;
+    private readonly Func<Bitmap>? _iconFactory;
     private readonly RibbonStyle _style;
     private string _caption;
     private ContextMenuStrip? _menu;
@@ -30,6 +31,22 @@ internal sealed class RibbonButton : Control
         SetStyle(ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.OptimizedDoubleBuffer | ControlStyles.ResizeRedraw, true);
         SetStyle(ControlStyles.Selectable, false);
         Cursor = Cursors.Hand;
+    }
+
+    /// <summary>A button whose icon is drawn from the current theme (and redrawn when the theme changes).</summary>
+    public RibbonButton(string caption, Func<Bitmap> iconFactory, RibbonStyle style) : this(caption, iconFactory(), style)
+    {
+        _iconFactory = iconFactory;
+    }
+
+    /// <summary>Redraws the icon in the current theme's colors.</summary>
+    public void RefreshIcon()
+    {
+        if (_iconFactory is null) return;
+        var old = _icon;
+        _icon = _iconFactory();
+        old?.Dispose();
+        Invalidate();
     }
 
     public bool IsChecked => _checked;

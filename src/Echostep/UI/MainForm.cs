@@ -31,6 +31,8 @@ internal sealed class MainForm : Form
     private readonly CrosshairOverlay _crosshair = new();
     private readonly PlaybackOverlay _overlay = new();
     private readonly ComboBox _setTheme, _setAccent, _setTextSize;
+    private readonly TextBox _setMacroFolder;
+    private string _macroFolder = "";
     private static readonly double[] Speeds = [0.25, 0.5, 1, 1.5, 2, 3, 5, 10];
     private readonly bool _playOnStart, _exitAfterPlay;
     private string _playName = "";
@@ -87,7 +89,7 @@ internal sealed class MainForm : Form
         KeyPreview = true;
 
         // ---- File menu (opened by the File tab) ------------------------------------------------
-        _fileMenu = new ContextMenuStrip { Font = Theme.UiFont };
+        _fileMenu = Theme.Track(new ContextMenuStrip { Font = Theme.UiFont });
         ToolStripMenuItem FileItem(string text, Action click, string? shortcut = null)
         {
             var mi = new ToolStripMenuItem(text, null, (_, _) => click());
@@ -136,7 +138,7 @@ internal sealed class MainForm : Form
 
         ContextMenuStrip MenuOf(params (string? Text, Action? Click)[] items)
         {
-            var m = new ContextMenuStrip { Font = Theme.UiFont };
+            var m = Theme.Track(new ContextMenuStrip { Font = Theme.UiFont });
             foreach (var (text, click) in items)
             {
                 if (text is null) m.Items.Add(new ToolStripSeparator());
@@ -144,7 +146,7 @@ internal sealed class MainForm : Form
             }
             return m;
         }
-        RibbonButton Big(RibbonPanel panel, string caption, Bitmap icon, int x, int width, string tip, Action? click = null, int height = 72)
+        RibbonButton Big(RibbonPanel panel, string caption, Func<Bitmap> icon, int x, int width, string tip, Action? click = null, int height = 72)
         {
             var b = panel.Put(new RibbonButton(caption, icon, RibbonStyle.Big), x, 8, width, height, tip);
             if (click is not null) b.Click += (_, _) => click();
@@ -159,44 +161,44 @@ internal sealed class MainForm : Form
         // Play, Record (each with its ▾ strip) and Stop sit at the same place on both tabs.
         void Transport(RibbonPanel panel)
         {
-            _playBtns.Add(Big(panel, "Play", Icons.Play(px), 8, 64, "Play from the top. While playing: pause and resume.", PlayOrPause, height: 54));
-            var playStrip = panel.Put(new RibbonButton("", null, RibbonStyle.Strip), 8, 62, 64, 16, "More ways to play");
+            _playBtns.Add(Big(panel, "Play", () => Icons.Play(px), 8, 64, "Play from the top. While playing: pause and resume.", PlayOrPause, height: 54));
+            var playStrip = panel.Put(new RibbonButton("", (Bitmap?)null, RibbonStyle.Strip), 8, 62, 64, 16, "More ways to play");
             playStrip.SetMenu(MenuOf(
                 ("Play ignoring breakpoints", () => Play(PlayKind.IgnoreBreakpoints)),
                 ("Play until selected", () => Play(PlayKind.UntilSelected)),
                 ("Play from selected", () => Play(PlayKind.FromSelected)),
                 ("Play selected", () => Play(PlayKind.SelectedOnly))));
-            var record = Big(panel, "Record", Icons.Record(px), 72, 72, "New recording (replaces the list after asking)",
+            var record = Big(panel, "Record", () => Icons.Record(px), 72, 72, "New recording (replaces the list after asking)",
                 () => StartRecording(RecordMode.Replace), height: 54);
-            var recordStrip = panel.Put(new RibbonButton("", null, RibbonStyle.Strip), 72, 62, 72, 16, "More ways to record");
+            var recordStrip = panel.Put(new RibbonButton("", (Bitmap?)null, RibbonStyle.Strip), 72, 62, 72, 16, "More ways to record");
             recordStrip.SetMenu(MenuOf(
                 ("Append recording", () => StartRecording(RecordMode.Append)),
                 ("Insert recording", () => StartRecording(RecordMode.Insert))));
-            _stopBtns.Add(Big(panel, "Stop", Icons.Stop(px), 144, 48, "Stop recording or playback", StopRecordingOrPlayback));
+            _stopBtns.Add(Big(panel, "Stop", () => Icons.Stop(px), 144, 48, "Stop recording or playback", StopRecordingOrPlayback));
             _idleOnly.AddRange([playStrip, record, recordStrip]);
             panel.Separator(196);
         }
 
         // Record and Edit tab
         Transport(editTab);
-        var mouse = Big(editTab, "Mouse", Icons.Mouse(px), 201, 48, "Insert a mouse action below the selected row");
+        var mouse = Big(editTab, "Mouse", () => Icons.Mouse(px), 201, 48, "Insert a mouse action below the selected row");
         mouse.SetMenu(MenuOf(Insert("Click"), Insert("Move"), Insert("Wheel")));
-        var keyPress = Big(editTab, "Key press", Icons.Key(px), 249, 75, "Insert a Key press below the selected row", () => InsertAction(new KeyAction()));
-        var wait = Big(editTab, "Wait", Icons.Clock(px), 324, 47, "Insert a wait below the selected row");
+        var keyPress = Big(editTab, "Key press", () => Icons.Key(px), 249, 75, "Insert a Key press below the selected row", () => InsertAction(new KeyAction()));
+        var wait = Big(editTab, "Wait", () => Icons.Clock(px), 324, 47, "Insert a wait below the selected row");
         wait.SetMenu(MenuOf(Insert("Wait"), Insert("Wait for pixel"), Insert("Wait for screen change"), (null, null),
             Insert("Wait until time"), Insert("Wait for pixel change")));
-        var flow = Big(editTab, "Flow", Icons.Flow(px), 371, 75, "Insert a flow action below the selected row");
+        var flow = Big(editTab, "Flow", () => Icons.Flow(px), 371, 75, "Insert a flow action below the selected row");
         flow.SetMenu(MenuOf(Insert("Goto"), Insert("Repeat"), (null, null), Insert("If time / day / window"), Insert("If pixel"), (null, null), Insert("Window focus")));
         editTab.Caption("Add Action", 208, 238);
         editTab.Separator(452);
-        var editBtn = editTab.Put(new RibbonButton("Edit", null, RibbonStyle.Small), 464, 8, 142, 25, "Open the selected action's dialog");
+        var editBtn = editTab.Put(new RibbonButton("Edit", (Bitmap?)null, RibbonStyle.Small), 464, 8, 142, 25, "Open the selected action's dialog");
         editBtn.Click += (_, _) => _editor!.EditSelected();
-        var deleteBtn = editTab.Put(new RibbonButton("Delete", null, RibbonStyle.Small), 464, 33, 142, 25, "Delete the selection");
+        var deleteBtn = editTab.Put(new RibbonButton("Delete", (Bitmap?)null, RibbonStyle.Small), 464, 33, 142, 25, "Delete the selection");
         deleteBtn.Click += (_, _) => _editor!.DeleteSelected();
-        var searchBtn = editTab.Put(new RibbonButton("Find", null, RibbonStyle.Small), 464, 58, 142, 25, "Find rows (Ctrl+F); tick Replace in it to replace (Ctrl+H)");
+        var searchBtn = editTab.Put(new RibbonButton("Find", (Bitmap?)null, RibbonStyle.Small), 464, 58, 142, 25, "Find rows (Ctrl+F); tick Replace in it to replace (Ctrl+H)");
         searchBtn.Click += (_, _) => _editor!.OpenFind(false);
         var expertSep = editTab.Put(new Panel { BackColor = Theme.Border }, 612, 4, 1, 90);
-        var more = Big(editTab, "More", Icons.Spark(px), 620, 56, "More actions: Find image, Type text, Set variable, Run / open, Message / sound");
+        var more = Big(editTab, "More", () => Icons.Spark(px), 620, 56, "More actions: Find image, Type text, Set variable, Run / open, Message / sound");
         more.SetMenu(MenuOf(ActionListEditor.MoreActionNames.Select(Insert).ToArray()));
         var moreCaption = editTab.Put(new Label { Text = "More", ForeColor = Theme.Muted, TextAlign = ContentAlignment.MiddleCenter, AutoSize = false }, 614, 80, 68, 16);
         _idleOnly.AddRange([mouse, keyPress, wait, flow, editBtn, deleteBtn, more]);
@@ -205,7 +207,7 @@ internal sealed class MainForm : Form
         Transport(playTab);
         ComboBox Choice(string[] items, int index, Action<int> changed)
         {
-            var box = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList };
+            var box = new ThemedCombo { DropDownStyle = ComboBoxStyle.DropDownList };
             box.Items.AddRange(items);
             box.SelectedIndex = Math.Clamp(index, 0, items.Length - 1);
             box.SelectedIndexChanged += (_, _) => changed(box.SelectedIndex);
@@ -245,22 +247,22 @@ internal sealed class MainForm : Form
         }
         playTab.Caption("Playback filter", 600, 286);
         playTab.Separator(892);
-        _stepBtn = Big(playTab, "Step", Icons.StepIcon(px), 900, 56, "While paused: run one row, then pause again", () => _player?.Step());
+        _stepBtn = Big(playTab, "Step", () => Icons.StepIcon(px), 900, 56, "While paused: run one row, then pause again", () => _player?.Step());
         var playExpertSep = playTab.Put(new Panel { BackColor = Theme.Border }, 962, 4, 1, 90);
         var speedNote = playTab.Note("Speed:", 970, 22);
         var speedIndex = Array.FindIndex(Speeds, v => Math.Abs(v - s0.PlaybackSpeed) < 0.001);
         var speed = playTab.Put(Choice(Speeds.Select(v => v.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "×").ToArray(),
             speedIndex < 0 ? 2 : speedIndex, i => Program.Settings.PlaybackSpeed = Speeds[i]), 1020, 20, 80, 22,
             "Plays Wait and mouse-move times faster or slower. Timeouts and Wait until time are not changed.");
-        var scheduleBtn = playTab.Put(new RibbonButton("Schedule…", null, RibbonStyle.Small), 1110, 8, 130, 25, "Play a macro at set times with Windows Task Scheduler");
+        var scheduleBtn = playTab.Put(new RibbonButton("Schedule…", (Bitmap?)null, RibbonStyle.Small), 1110, 8, 130, 25, "Play a macro at set times with Windows Task Scheduler");
         scheduleBtn.Click += (_, _) => OpenSchedules();
-        var hotkeysBtn = playTab.Put(new RibbonButton("Macro hotkeys…", null, RibbonStyle.Small), 1110, 33, 130, 25, "Hotkeys that play a macro file straight away");
+        var hotkeysBtn = playTab.Put(new RibbonButton("Macro hotkeys…", (Bitmap?)null, RibbonStyle.Small), 1110, 33, 130, 25, "Hotkeys that play a macro file straight away");
         hotkeysBtn.Click += (_, _) => OpenMacroHotkeys();
         var playExpertCaption = playTab.Put(new Label { Text = "Extras", ForeColor = Theme.Muted, TextAlign = ContentAlignment.MiddleCenter, AutoSize = false }, 970, 80, 270, 16);
         _idleOnly.AddRange([scheduleBtn, hotkeysBtn]);
 
         // View tab
-        var lineNumbers = Big(viewTab, "Show line numbers", Icons.Lines(px, numbered: true), 8, 70, "Show or hide the line-number column");
+        var lineNumbers = Big(viewTab, "Show line numbers", () => Icons.Lines(px, numbered: true), 8, 70, "Show or hide the line-number column");
         lineNumbers.SetChecked(s0.ShowLineNumbers);
         lineNumbers.Click += (_, _) =>
         {
@@ -269,13 +271,13 @@ internal sealed class MainForm : Form
             _editor!.SetShowLineNumbers(lineNumbers.IsChecked);
         };
         viewTab.Separator(84);
-        var showRules = Big(viewTab, "Rules", Icons.Watch(px), 92, 56, "Background pixel rules");
-        var showLog = Big(viewTab, "Log", Icons.Lines(px, numbered: false), 148, 56, "What happened: playback results, rule firings, timeouts");
-        var showSettings = Big(viewTab, "Settings", Icons.Gear(px), 204, 62, "Appearance, recording, playback, hotkeys and other settings");
+        var showRules = Big(viewTab, "Rules", () => Icons.Watch(px), 92, 56, "Background pixel rules");
+        var showLog = Big(viewTab, "Log", () => Icons.Lines(px, numbered: false), 148, 56, "What happened: playback results, rule firings, timeouts");
+        var showSettings = Big(viewTab, "Settings", () => Icons.Gear(px), 204, 62, "Appearance, recording, playback, hotkeys and other settings");
         viewTab.Caption("Show", 92, 174);
         viewTab.Separator(272);
-        _watchBtn = Big(viewTab, "Watch", Icons.Watch(px), 280, 64, "Run background pixel rules", ToggleWatch);
-        Big(viewTab, "Picker", Icons.Picker(px), 344, 56, "Live color picker: Enter adds a pixel rule, Esc closes", OpenPicker);
+        _watchBtn = Big(viewTab, "Watch", () => Icons.Watch(px), 280, 64, "Run background pixel rules", ToggleWatch);
+        Big(viewTab, "Picker", () => Icons.Picker(px), 344, 56, "Live color picker: Enter adds a pixel rule, Esc closes", OpenPicker);
         viewTab.Caption("Pixel rules", 280, 120);
 
         // ---- Pages under the ribbon ------------------------------------------------------------
@@ -322,6 +324,11 @@ internal sealed class MainForm : Form
         _macroPage = Page(null, macroHost); // shown by the Record and Edit and Playback tabs
 
         _rulesPanel = new RulesPanel(_engine) { Dock = DockStyle.Fill };
+        Theme.Changed += () =>
+        {
+            _editor.RefreshRows();
+            _rulesPanel.RefreshRows();
+        };
         _rulesPage = Page(showRules, _rulesPanel);
 
         var logBody = new Panel { Dock = DockStyle.Fill };
@@ -341,7 +348,7 @@ internal sealed class MainForm : Form
         Page(showLog, logBody);
 
         // ---- Settings page ---------------------------------------------------------------------
-        var settingsBody = new Panel { Dock = DockStyle.Fill, AutoScroll = true };
+        var settingsBody = new ScrollPanel { Dock = DockStyle.Fill, AutoScroll = true };
         // Not docked, and both columns sized to their contents: every field keeps its full size and the page scrolls.
         var sg = new FieldGrid { Location = new Point(0, 0) };
         sg.ColumnStyles[1] = new ColumnStyle(SizeType.AutoSize);
@@ -357,7 +364,7 @@ internal sealed class MainForm : Form
         }
         ComboBox Pick(string caption, IEnumerable<string> items)
         {
-            var c = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 180 };
+            var c = new ThemedCombo { DropDownStyle = ComboBoxStyle.DropDownList, Width = 180 };
             foreach (var i in items) c.Items.Add(i);
             c.SelectedIndex = 0;
             return Field(caption, c);
@@ -366,18 +373,12 @@ internal sealed class MainForm : Form
         sg.Header("Appearance");
         _setTheme = Pick("Theme", Theme.ThemeNames);
         _setAccent = Pick("Accent color", Theme.Accents.Select(a => a.Name));
-        _setAccent.DrawMode = DrawMode.OwnerDrawFixed;
-        _setAccent.DrawItem += (_, e) =>
-        {
-            if (e.Index < 0) return;
-            e.DrawBackground();
-            var k = e.Bounds.Height - 8;
-            using (var b = new SolidBrush(Theme.Accents[e.Index].Color)) e.Graphics.FillRectangle(b, e.Bounds.X + 4, e.Bounds.Y + 4, k, k);
-            TextRenderer.DrawText(e.Graphics, Theme.Accents[e.Index].Name, e.Font ?? Theme.UiFont,
-                new Point(e.Bounds.X + k + 12, e.Bounds.Y + 1), (e.State & DrawItemState.Selected) != 0 ? Theme.SelectionText : Theme.Text);
-        };
+        ((ThemedCombo)_setAccent).Swatch = i => i < Theme.Accents.Length ? Theme.Accents[i].Color : null;
         _setTextSize = Pick("Text size", Theme.TextSizes);
-        sg.Add("", new Label { AutoSize = true, ForeColor = Theme.Muted, Text = "A new theme, accent color or text size takes effect when Echostep restarts." });
+        // The look changes as soon as a choice is made.
+        _setTheme.SelectedIndexChanged += (_, _) => PreviewLook();
+        _setAccent.SelectedIndexChanged += (_, _) => PreviewLook();
+        _setTextSize.SelectedIndexChanged += (_, _) => PreviewLook();
         sg.Header("Recording");
         _setRecordMoves = Tick("Record mouse paths");
         _setMinMove = Number("Minimum mouse movement (px)", 8, 0, 500);
@@ -408,6 +409,21 @@ internal sealed class MainForm : Form
         _setHideRecording = Tick("Hide Echostep when recording");
         _setStartMinimized = Tick("Start minimized");
         _setStartOnLogin = Tick("Start on login");
+        sg.Header("Files");
+        _setMacroFolder = new TextBox { Width = 380, ReadOnly = true };
+        _setMacroFolder.MinimumSize = new Size(380, 0);
+        var browseFolder = new RoundButton { Text = "Browse…", AutoSize = true };
+        var defaultFolder = new RoundButton { Text = "Use Echostep's folder", AutoSize = true };
+        sg.Row("Save macros in", _setMacroFolder, browseFolder, defaultFolder);
+        browseFolder.Click += (_, _) =>
+        {
+            using var dlg = new FolderBrowserDialog { SelectedPath = AppPaths.MacrosDir, Description = "Where Save and Open start" };
+            if (dlg.ShowDialog(this) != DialogResult.OK) return;
+            _macroFolder = string.Equals(Path.GetFullPath(dlg.SelectedPath).TrimEnd('\\'), Path.GetFullPath(AppPaths.DataDir).TrimEnd('\\'),
+                StringComparison.OrdinalIgnoreCase) ? "" : dlg.SelectedPath;
+            ShowMacroFolder();
+        };
+        defaultFolder.Click += (_, _) => { _macroFolder = ""; ShowMacroFolder(); };
         sg.Header("Pixels and rules");
         _setWatchOnStartup = Tick("Start watching rules when Echostep opens");
         _setMagnifier = Number("Picker magnifier size (pixels across)", 15, 7, 41);
@@ -417,7 +433,7 @@ internal sealed class MainForm : Form
         openFolder.Click += (_, _) => Process.Start(new ProcessStartInfo("explorer.exe", $"\"{AppPaths.DataDir}\"") { UseShellExecute = true });
         sg.Header("");
         sg.Row("", apply, openFolder);
-        sg.Add("", new Label { AutoSize = true, ForeColor = Theme.Muted, Text = $"Settings, pixel rules and the Macros folder live in {AppPaths.DataDir}" });
+        sg.Add("", new Label { AutoSize = true, ForeColor = Theme.Muted, Text = $"Settings and pixel rules are kept in {AppPaths.DataDir.TrimEnd('\\')}" });
         sg.Add("", new Label { AutoSize = true, ForeColor = Theme.Muted, Text = $"Echostep {Application.ProductVersion.Split('+')[0]}" });
         var tips = new ToolTip();
         tips.SetToolTip(_setStopRecording, "One key (or a combination) that ends a recording. Default: Enter.");
@@ -715,6 +731,7 @@ internal sealed class MainForm : Form
         if (monitor.Needed)
         {
             monitor.PauseToggled += player.TogglePause;
+            monitor.Suspended = () => PickerForm.IsOpen;
             monitor.UserInput += () =>
             {
                 _abortedByInput = true;
@@ -1109,6 +1126,8 @@ internal sealed class MainForm : Form
         var accent = Array.FindIndex(Theme.Accents, a => string.Equals(a.Name, s.AccentColor, StringComparison.OrdinalIgnoreCase));
         _setAccent.SelectedIndex = accent < 0 ? 0 : accent;
         _setTextSize.SelectedIndex = Math.Clamp(s.TextSize, 0, Theme.TextSizes.Length - 1);
+        _macroFolder = s.MacroFolder;
+        ShowMacroFolder();
         _setWatchOnStartup.Checked = s.WatchOnStartup;
         _setMagnifier.Value = s.MagnifierPixels;
     }
@@ -1168,41 +1187,34 @@ internal sealed class MainForm : Form
         s.StartOnLogin = _setStartOnLogin.Checked;
         s.WatchOnStartup = _setWatchOnStartup.Checked;
         s.MagnifierPixels = _setMagnifier.Value;
-        var lookChanged = s.Theme != _setTheme.SelectedIndex || s.TextSize != _setTextSize.SelectedIndex ||
-                          !string.Equals(s.AccentColor, Theme.Accents[_setAccent.SelectedIndex].Name, StringComparison.OrdinalIgnoreCase);
-        s.Theme = _setTheme.SelectedIndex;
-        s.AccentColor = Theme.Accents[_setAccent.SelectedIndex].Name;
-        s.TextSize = _setTextSize.SelectedIndex;
+        s.MacroFolder = _macroFolder;
+        AppPaths.MacroFolder = s.MacroFolder;
         if (loginChanged) Native.SetStartOnLogin(s.StartOnLogin);
         s.Save(AppPaths.SettingsFile);
         LoadSettingsFields();
         RegisterHotkeys();
         SetStatus("Settings saved.");
-        if (lookChanged && MessageBox.Show(this, "Restart Echostep now to use the new look?", "Settings",
-                MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
-            Restart();
     }
 
-    /// <summary>Starts a new Echostep (with the same macro open) and closes this one.</summary>
-    private void Restart()
+    private void ShowMacroFolder() =>
+        _setMacroFolder.Text = _macroFolder.Length == 0 ? AppPaths.DataDir.TrimEnd('\\') + "  (Echostep's folder)" : _macroFolder;
+
+    /// <summary>Applies and saves the theme, accent color and text size as soon as one is picked (no restart).</summary>
+    private void PreviewLook()
     {
-        if (_state != AppState.Idle || !ConfirmDiscard()) return;
-        var exe = Environment.ProcessPath ?? Application.ExecutablePath;
-        var psi = new ProcessStartInfo(exe) { UseShellExecute = false };
-        if (_filePath is not null) psi.ArgumentList.Add(_filePath);
-        psi.ArgumentList.Add("--after");
-        psi.ArgumentList.Add(Environment.ProcessId.ToString());
-        try
-        {
-            Process.Start(psi)?.Dispose();
-        }
-        catch (Exception ex)
-        {
-            MessageBox.Show(this, "Could not restart: " + ex.Message, "Settings", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-            return;
-        }
-        SetDirty(false); // already saved or discarded above
-        Close();
+        var s = Program.Settings;
+        if (_setTheme.SelectedIndex < 0 || _setAccent.SelectedIndex < 0 || _setTextSize.SelectedIndex < 0) return;
+        var accent = Theme.Accents[_setAccent.SelectedIndex].Name;
+        if (s.Theme == _setTheme.SelectedIndex && s.TextSize == _setTextSize.SelectedIndex &&
+            string.Equals(s.AccentColor, accent, StringComparison.OrdinalIgnoreCase))
+            return; // nothing new (e.g. the fields being filled in)
+        s.Theme = _setTheme.SelectedIndex;
+        s.AccentColor = accent;
+        s.TextSize = _setTextSize.SelectedIndex;
+        s.Save(AppPaths.SettingsFile);
+        SuspendLayout();
+        Theme.Switch(s.Theme, s.AccentColor, s.TextSize, _overlay);
+        ResumeLayout(true);
     }
 
     private void UpdateOverlay(Player p, string elapsed)

@@ -106,6 +106,8 @@ public sealed class AppSettings
     [Category("Playback")] public double PlaybackSpeed { get; set; } = 1;
     /// <summary>Show the small always-on-top progress box while playing.</summary>
     [Category("Playback")] public bool ShowProgressBox { get; set; }
+    /// <summary>Folder where Save and Open start; empty means Echostep's own folder (next to the EXE).</summary>
+    [Category("Interface")] public string MacroFolder { get; set; } = "";
     /// <summary>Hotkeys that play a macro file directly.</summary>
     [Browsable(false)] public List<MacroHotkey> MacroHotkeys { get; set; } = [];
     /// <summary>Schedules created in Windows Task Scheduler, kept here to list and remove them.</summary>
@@ -173,9 +175,9 @@ public sealed class AppSettings
 }
 
 /// <summary>
-/// Where settings.json, rules.json and the Macros folder live: the folder Echostep is installed in (or the portable
-/// EXE's folder), so the app and everything it saves stay together. Only if that folder cannot be written to
-/// does it fall back to %APPDATA%\Echostep.
+/// Where settings.json and rules.json live: the folder Echostep is installed in (or the portable EXE's folder), so the
+/// app and everything it saves stay together. Only if that folder cannot be written to does it fall back to
+/// %APPDATA%\Echostep. Macros are saved there too, unless the user picks another folder in Settings.
 /// </summary>
 public static class AppPaths
 {
@@ -186,17 +188,11 @@ public static class AppPaths
     public static string SettingsFile => Path.Combine(DataDir, "settings.json");
     public static string RulesFile => Path.Combine(DataDir, "rules.json");
 
-    /// <summary>Default folder for saving and opening macros (created when first needed).</summary>
-    public static string MacrosDir
-    {
-        get
-        {
-            var dir = Path.Combine(DataDir, "Macros");
-            try { Directory.CreateDirectory(dir); }
-            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { return DataDir; }
-            return dir;
-        }
-    }
+    /// <summary>Where Save and Open start: the folder chosen in Settings, or Echostep's own folder.</summary>
+    public static string MacrosDir => MacroFolder is { Length: > 0 } chosen && Directory.Exists(chosen) ? chosen : DataDir;
+
+    /// <summary>The folder chosen in Settings (kept in step with <see cref="AppSettings.MacroFolder"/>); empty for the default.</summary>
+    public static string MacroFolder { get; set; } = "";
 
     private static string ChooseDataDir()
     {

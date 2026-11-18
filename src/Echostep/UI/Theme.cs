@@ -109,6 +109,103 @@ internal static class Theme
         BoldFont = new Font("Segoe UI", size, FontStyle.Bold);
     }
 
+    // ---- Switching the look while the app runs ------------------------------------------------
+
+    private static readonly List<WeakReference<ToolStrip>> Menus = [];
+
+    /// <summary>Remembers a menu so a theme switch can recolor it (menus are not inside any window's controls).</summary>
+    public static T Track<T>(T menu) where T : ToolStrip
+    {
+        Menus.Add(new WeakReference<ToolStrip>(menu));
+        return menu;
+    }
+
+    /// <summary>Raised after <see cref="Switch"/>, for anything that draws rows or caches colors (lists rebuild their rows).</summary>
+    public static event Action? Changed;
+
+    private static Color[] BackRoles() => [Bg, Surface, SurfaceAlt, Hover, Border, Accent, AccentHover, AccentDim, ErrorBack, PlayingBack, Danger, Success];
+    private static Color[] ForeRoles() => [Text, Muted, Disabled, Accent, Danger, Success, ErrorText, SelectionText, OnAccent, Border, Surface];
+
+    private static Dictionary<int, Color> Map(Color[] from, Color[] to)
+    {
+        var map = new Dictionary<int, Color>();
+        for (var i = 0; i < from.Length; i++) map.TryAdd(from[i].ToArgb(), to[i]);
+        return map;
+    }
+
+    /// <summary>
+    /// Changes theme, accent and text size immediately: every open window, its controls, menus, lists and title bars
+    /// are recolored in place. Colors are swapped role by role (old background → new background, old muted text → new
+    /// muted text…), so anything colored from the palette follows without each window knowing about it.
+    /// </summary>
+    public static void Switch(int theme, string? accent, int textSize, params Control[] alsoHidden)
+    {
+        var oldBack = BackRoles();
+        var oldFore = ForeRoles();
+        Font oldUi = UiFont, oldBold = BoldFont;
+        Init(theme, accent, textSize);
+        var back = Map(oldBack, BackRoles());
+        var fore = Map(oldFore, ForeRoles());
+        Font NewFont(Font f) => f.Equals(oldUi) ? UiFont : f.Equals(oldBold) ? BoldFont : f;
+
+        void Recolor(Control c)
+        {
+            if (back.TryGetValue(c.BackColor.ToArgb(), out var b) && b != c.BackColor) c.BackColor = b;
+            if (fore.TryGetValue(c.ForeColor.ToArgb(), out var f) && f != c.ForeColor) c.ForeColor = f;
+            var font = NewFont(c.Font);
+            if (!ReferenceEquals(font, c.Font) && !font.Equals(c.Font)) c.Font = font;
+            switch (c)
+            {
+                case DataGridView g:
+                    StyleGrid(g);
+                    foreach (DataGridViewColumn col in g.Columns)
+                    {
+                        var st = col.DefaultCellStyle;
+                        if (fore.TryGetValue(st.ForeColor.ToArgb(), out var cf)) st.ForeColor = cf;
+                        if (back.TryGetValue(st.BackColor.ToArgb(), out var cb)) st.BackColor = cb;
+                        if (st.Font is { } cfnt) st.Font = NewFont(cfnt);
+                    }
+                    if (g.Rows.Count <= 5000)
+                        foreach (DataGridViewRow row in g.Rows)
+                        {
+                            if (!row.HasDefaultCellStyle) continue;
+                            var st = row.DefaultCellStyle;
+                            if (fore.TryGetValue(st.ForeColor.ToArgb(), out var rf)) st.ForeColor = rf;
+                            if (back.TryGetValue(st.BackColor.ToArgb(), out var rbk)) st.BackColor = rbk;
+                        }
+                    break;
+                case RibbonButton rb:
+                    rb.RefreshIcon();
+                    break;
+                case TextBox { Multiline: false } t when t.IsHandleCreated:
+                    Native.UseDarkEditTheme(t.Handle, IsDark);
+                    break;
+            }
+            if (c.IsHandleCreated && c is TextBox { Multiline: true } or ListBox or ScrollableControl { AutoScroll: true })
+                Native.UseDarkScrollbars(c.Handle, IsDark);
+            if (c is Form form && form.IsHandleCreated) Native.UseDarkTitleBar(form.Handle, IsDark);
+            foreach (Control child in c.Controls) Recolor(child);
+        }
+
+        var roots = Application.OpenForms.Cast<Control>().Concat(alsoHidden).Distinct().ToList();
+        foreach (var r in roots) Recolor(r);
+
+        Menus.RemoveAll(w => !w.TryGetTarget(out _));
+        foreach (var w in Menus)
+        {
+            if (!w.TryGetTarget(out var menu)) continue;
+            Recolor(menu);
+            foreach (var item in menu.Items.OfType<ToolStripItem>().Concat(menu.Items.OfType<ToolStripMenuItem>().SelectMany(Descendants)))
+                if (fore.TryGetValue(item.ForeColor.ToArgb(), out var f)) item.ForeColor = f;
+        }
+
+        Changed?.Invoke();
+        foreach (var r in roots) r.Invalidate(true);
+    }
+
+    private static IEnumerable<ToolStripItem> Descendants(ToolStripMenuItem item) =>
+        item.DropDownItems.OfType<ToolStripItem>().Concat(item.DropDownItems.OfType<ToolStripMenuItem>().SelectMany(Descendants));
+
     /// <summary>Mixes <paramref name="a"/> with <paramref name="b"/>: weight 1 is all a, 0 all b.</summary>
     public static Color Blend(Color a, Color b, double weight) => Color.FromArgb(
         (int)Math.Round(a.R * weight + b.R * (1 - weight)),
@@ -242,12 +339,11 @@ internal static class Theme
         DarkScrollbars(g);
     }
 
-    /// <summary>Visible, themed borders for one-line text boxes in the dark palette (Windows draws them nearly black otherwise).</summary>
+    /// <summary>Visible, themed borders for one-line text boxes (Windows draws them nearly black in the dark palette otherwise).</summary>
     private static void DarkEdit(Control c)
     {
-        if (!IsDark) return;
-        if (c.IsHandleCreated) Native.UseDarkEditTheme(c.Handle);
-        c.HandleCreated += (_, _) => Native.UseDarkEditTheme(c.Handle);
+        if (c.IsHandleCreated) Native.UseDarkEditTheme(c.Handle, IsDark);
+        c.HandleCreated += (_, _) => Native.UseDarkEditTheme(c.Handle, IsDark);
     }
 
     private static void DarkScrollbars(Control c)
@@ -563,4 +659,88 @@ internal sealed class DarkRenderer : ToolStripProfessionalRenderer
         using var b = new SolidBrush(color);
         e.Graphics.FillPath(b, path);
     }
+}
+
+/// <summary>
+/// A drop-down drawn in the app's own style: themed border, arrow and list, no blue highlight on the closed box,
+/// and the mouse wheel scrolls the page instead of changing the value (unless the list is open).
+/// </summary>
+internal class ThemedCombo : ComboBox
+{
+    public ThemedCombo()
+    {
+        DrawMode = DrawMode.OwnerDrawFixed;
+        FlatStyle = FlatStyle.Flat;
+        BackColor = Theme.SurfaceAlt;
+        ForeColor = Theme.Text;
+        ItemHeight = Font.Height + 6;
+    }
+
+    /// <summary>Optional color swatch drawn before an item's text (used by the accent color list).</summary>
+    [System.ComponentModel.Browsable(false), System.ComponentModel.DesignerSerializationVisibility(System.ComponentModel.DesignerSerializationVisibility.Hidden)]
+    public Func<int, Color?>? Swatch { get; set; }
+
+    protected override void OnFontChanged(EventArgs e)
+    {
+        base.OnFontChanged(e);
+        ItemHeight = Font.Height + 6;
+    }
+
+    protected override void OnDrawItem(DrawItemEventArgs e)
+    {
+        var g = e.Graphics;
+        var closedBox = (e.State & DrawItemState.ComboBoxEdit) != 0;
+        var hot = !closedBox && (e.State & DrawItemState.Selected) != 0;
+        using (var b = new SolidBrush(closedBox ? Theme.SurfaceAlt : hot ? Theme.AccentDim : Theme.Surface)) g.FillRectangle(b, e.Bounds);
+        if (e.Index < 0 || e.Index >= Items.Count) return;
+        var x = e.Bounds.X + 6;
+        if (Swatch?.Invoke(e.Index) is { } swatch)
+        {
+            var k = e.Bounds.Height - 10;
+            using var sb = new SolidBrush(swatch);
+            g.FillRectangle(sb, x, e.Bounds.Y + 5, k, k);
+            x += k + 8;
+        }
+        var color = !Enabled ? Theme.Disabled : hot ? Theme.SelectionText : Theme.Text;
+        TextRenderer.DrawText(g, GetItemText(Items[e.Index]), Font, new Rectangle(x, e.Bounds.Y, e.Bounds.Right - x, e.Bounds.Height), color,
+            TextFormatFlags.VerticalCenter | TextFormatFlags.Left | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPrefix);
+        // No focus rectangle: the closed box looks the same focused or not.
+    }
+
+    protected override void WndProc(ref Message m)
+    {
+        const int WM_PAINT = 0x000F, WM_MOUSEWHEEL = 0x020A;
+        if (m.Msg == WM_MOUSEWHEEL && !DroppedDown && Parent is { IsHandleCreated: true } parent)
+        {
+            // Let the page scroll; a closed drop-down should not change its value under the wheel.
+            Native.SendMessage(parent.Handle, m.Msg, m.WParam, m.LParam);
+            return;
+        }
+        base.WndProc(ref m);
+        if (m.Msg == WM_PAINT && DropDownStyle == ComboBoxStyle.DropDownList) PaintFrame();
+    }
+
+    /// <summary>Draws the border and arrow over the system ones.</summary>
+    private void PaintFrame()
+    {
+        using var g = Graphics.FromHwnd(Handle);
+        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+        var k = this.DeviceDpi / 96f;
+        var w = (int)(22 * k);
+        var arrowBox = new Rectangle(Width - w - 1, 1, w, Height - 2);
+        using (var b = new SolidBrush(Theme.SurfaceAlt)) g.FillRectangle(b, arrowBox);
+        var cx = arrowBox.X + arrowBox.Width / 2f;
+        var cy = arrowBox.Y + arrowBox.Height / 2f;
+        using (var p = new Pen(Enabled ? Theme.Muted : Theme.Disabled, 1.6f * k))
+            g.DrawLines(p, [new PointF(cx - 4 * k, cy - 2 * k), new PointF(cx, cy + 2 * k), new PointF(cx + 4 * k, cy - 2 * k)]);
+        g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.None;
+        using var border = new Pen(DroppedDown ? Theme.Accent : Theme.Border);
+        g.DrawRectangle(border, 0, 0, Width - 1, Height - 1);
+    }
+}
+
+/// <summary>A scrolling panel that does not jump back to the focused control when it is scrolled or relaid out.</summary>
+internal sealed class ScrollPanel : Panel
+{
+    protected override Point ScrollToControl(Control activeControl) => DisplayRectangle.Location;
 }

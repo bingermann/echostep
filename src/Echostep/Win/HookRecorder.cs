@@ -278,6 +278,12 @@ internal sealed class PlaybackMonitor : HookThread
         _abortOnMove = abortOnMove;
     }
 
+    /// <summary>
+    /// While this returns true (the color picker is open), keys and mouse moves are left alone: Esc closes the
+    /// picker instead of pausing, and moving the mouse to pick a pixel does not abort playback.
+    /// </summary>
+    public Func<bool>? Suspended { get; set; }
+
     /// <summary>True if there is anything to watch for.</summary>
     public bool Needed => !_pauseKey.IsEmpty || _abortOnKey || _abortOnMove;
 
@@ -286,6 +292,11 @@ internal sealed class PlaybackMonitor : HookThread
     protected override bool OnMouse(int msg, Native.MSLLHOOKSTRUCT data)
     {
         if (!_abortOnMove || _aborted || msg != Native.WM_MOUSEMOVE) return false;
+        if (Suspended?.Invoke() == true)
+        {
+            _firstPoint = null; // measure again from wherever the mouse is when the picker closes
+            return false;
+        }
         _firstPoint ??= data.pt;
         // A few pixels of jitter (a bumped desk) should not abort a long run.
         if (Math.Abs(data.pt.X - _firstPoint.Value.X) + Math.Abs(data.pt.Y - _firstPoint.Value.Y) < 6) return false;
@@ -297,6 +308,11 @@ internal sealed class PlaybackMonitor : HookThread
     protected override bool OnKey(int vk, bool down)
     {
         if (KeyNames.IsModifier(vk)) return false;
+        if (Suspended?.Invoke() == true)
+        {
+            _pauseKeyDown = false;
+            return false;
+        }
         if (!_pauseKey.IsEmpty && vk == _pauseKey.Vk && (down ? Held == _pauseKey.Modifiers : _pauseKeyDown))
         {
             if (down && !_pauseKeyDown) PauseToggled?.Invoke();

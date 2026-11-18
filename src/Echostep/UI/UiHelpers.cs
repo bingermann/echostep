@@ -65,7 +65,7 @@ internal sealed class FieldGrid : TableLayoutPanel
 
     public ComboBox Combo(string caption, IEnumerable<string> items, string? value, bool editable, int width = 180)
     {
-        var c = new ComboBox
+        var c = new ThemedCombo
         {
             DropDownStyle = editable ? ComboBoxStyle.DropDown : ComboBoxStyle.DropDownList,
             Width = width,

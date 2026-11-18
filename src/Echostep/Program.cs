@@ -29,6 +29,7 @@ internal static class Program
         }
 
         Settings = AppSettings.Load(AppPaths.SettingsFile);
+        AppPaths.MacroFolder = Settings.MacroFolder;
         // The look is chosen before any window or menu renderer is created.
         Theme.Init(Settings.Theme, Settings.AccentColor, Settings.TextSize);
         ToolStripManager.Renderer = new DarkRenderer();

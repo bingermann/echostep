@@ -257,10 +257,10 @@ internal sealed partial class ActionEditDialog
         showZone.Click += (_, _) => { if (zw.Value > 0 && zh.Value > 0) ZoneFlash.Show(new Rectangle(zx.Value, zy.Value, zw.Value, zh.Value)); };
 
         _grid.Header("If it is found");
-        var mouse = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 150 };
+        var mouse = new ThemedCombo { DropDownStyle = ComboBoxStyle.DropDownList, Width = 150 };
         mouse.Items.AddRange(["No mouse action", "Move to it", "Left-click it", "Right-click it", "Middle-click it", "Double-click it"]);
         mouse.SelectedIndex = (int)fi.Mouse;
-        var anchor = new ComboBox { DropDownStyle = ComboBoxStyle.DropDownList, Width = 130 };
+        var anchor = new ThemedCombo { DropDownStyle = ComboBoxStyle.DropDownList, Width = 130 };
         anchor.Items.AddRange(["Centered", "Top-left", "Top-right", "Bottom-left", "Bottom-right"]);
         anchor.SelectedIndex = (int)fi.Anchor;
         _grid.Row("Mouse action", mouse, new Label { Text = "at", AutoSize = true }, anchor);

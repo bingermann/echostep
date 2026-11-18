@@ -8,7 +8,7 @@ make decisions, loop, and run on a schedule.
 **[⬇ Download Echostep for Windows](https://github.com/bingermann/Echostep/releases/latest/download/Echostep-Setup.exe)**
 
 Run the downloaded file and click through the installer. It asks where to put Echostep: the app, your saved
-macros (in `Macros`) and its settings all live in that one folder. If Windows says "Windows protected your PC",
+macros and its settings all live in that one folder (you can choose another folder for macros in Settings → Files). If Windows says "Windows protected your PC",
 click **More info → Run anyway** (the installer isn't code-signed).
 
 No install wanted? Download the
@@ -131,7 +131,7 @@ Command line: `Echostep.exe "macro.estep" --play --exit` opens the macro, plays 
 - **Accent color:** Blue, Teal, Green, Purple, Orange, Pink or Red. The colors are darkened automatically in Light so text on them stays readable.
 - **Text size:** Normal or Large.
 
-Changes apply after a restart. Echostep offers to restart for you and reopens the same macro. Row and group colors
+Changes apply straight away, with no restart. Row and group colors
 look like dark tints in Dark and pastels in Light, so a macro looks right in either theme.
 
 ### Look
@@ -165,7 +165,7 @@ Macros are `.estep` files: UTF-8 JSON with one action per line, which keeps git 
 | `if` | `condition`: `time` (with `compare` `before`/`after`/`between`, `time`, and `time2` for between), `day` (with `days`, e.g. `["sat","sun"]`) or `window` (with `title`, `titleMatch`, `state` `open`/`front`); optional `then`, `else` |
 | `windowFocus` | `program`, `titleMatch` (`exact`/`begins`/`ends`/`contains`/`any`), `title`, optional `left`, `top`, `width`, `height`, `timeoutMs`, `onTimeout`, `then` |
 
-Every action can also have a `label`, and optionally `comment`, `disabled`, `breakpoint`, `rowColor`, `group` and `groupColor`. The file itself may carry `screen`, the monitor layout it was recorded on. `examples/` contains the spec's dialog-loop macro and its `rules.json` (the installer puts them in `Macros\Examples`).
+Every action can also have a `label`, and optionally `comment`, `disabled`, `breakpoint`, `rowColor`, `group` and `groupColor`. The file itself may carry `screen`, the monitor layout it was recorded on. `examples/` contains the spec's dialog-loop macro and its `rules.json` (the installer puts them in `Examples`).
 
 **One addition to the spec:** `stop` is a reserved label, alongside `start`, `end` and numbers. It is valid as any jump target and stops playback. `onTimeout` defaults to `stop`.
 
@@ -192,7 +192,7 @@ or
 dotnet publish src\Echostep -c Release -o dist
 ```
 
-The result is `dist\Echostep.exe`, one file. Copy it anywhere; nothing else is needed to run it. `settings.json`, `rules.json` and the `Macros` folder are kept next to the EXE. If that folder is read-only, they go in `%APPDATA%\Echostep` instead.
+The result is `dist\Echostep.exe`, one file. Copy it anywhere; nothing else is needed to run it. `settings.json` and `rules.json` are kept next to the EXE, and macros are saved there too unless you pick another folder in Settings → Files. If that folder is read-only, they go in `%APPDATA%\Echostep` instead.
 
 To check the platform-independent core on any OS, run `dotnet run --project tests/CoreTests` (352 checks).
 
@@ -208,7 +208,7 @@ src/Echostep/
 tests/CoreTests/          tests for Core (the release build runs them first)
 installer/Echostep.iss    the installer definition (Inno Setup)
 .github/workflows/        the GitHub Actions build that makes the installer and the release
-examples/                 sample macro and rules file (installed in Macros\Examples)
+examples/                 sample macro and rules file (installed in Examples)
 build.cmd                 builds dist\Echostep.exe locally (needs the .NET 10 SDK)
 ```
 

@@ -553,10 +553,12 @@ internal static class Native
         }
     }
 
-    /// <summary>Dark-mode borders for a text box, where Windows supports it.</summary>
-    public static void UseDarkEditTheme(IntPtr hWnd)
+    [DllImport("user32.dll")] public static extern IntPtr SendMessage(IntPtr hWnd, int msg, IntPtr wParam, IntPtr lParam);
+
+    /// <summary>Text box borders for the dark or light palette, where Windows supports it.</summary>
+    public static void UseDarkEditTheme(IntPtr hWnd, bool dark = true)
     {
-        try { SetWindowTheme(hWnd, "DarkMode_CFD", null); }
+        try { SetWindowTheme(hWnd, dark ? "DarkMode_CFD" : "Explorer", null); }
         catch (Exception) { /* cosmetic only */ }
     }
 
