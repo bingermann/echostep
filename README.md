@@ -77,7 +77,7 @@ Nothing that existed before was removed; where the spec and the existing app dis
   - The ▾ strip under Play: *Play ignoring breakpoints*, *Play until selected*, *Play from selected*, *Play selected row* (Ctrl+Down). *Play from selected* only chooses where to start: a Repeat or Goto that jumps back above that row keeps playing. *Play selected row* runs just that row.
   - Pause and resume with the pause key (default **Esc**, real key presses only) or the Play button, which turns into Pause/Resume. *Step* runs one row while paused.
   - Breakpoints (F9) pause before their row.
-  - Playback tab: mouse path (As recorded, Linear, Spline, Natural), repeat count, after-playback action (shutdown, restart, lock, log out, standby) with a cancellable 15-second countdown, speed, and a **Filter** button whose menu hides and skips mouse moves, clicks, key presses, waits or focus changes.
+  - Playback tab: big buttons that show their current setting and open a menu: **Repeat** (once, 2–100 times, or any number up to 999,999), **Speed**, **Mouse** (path: as recorded, straight, smooth or natural), **Filter** (hide and skip mouse moves, clicks, key presses, waits or focus changes) and **When done** (shut down, restart, lock, log out or standby, with an optional cancellable 15-second countdown), plus **Step**.
   - The after-playback action always starts at *No action* when Echostep opens.
   - Optional abort on a real key press or mouse move (Settings).
 - **Editing:**

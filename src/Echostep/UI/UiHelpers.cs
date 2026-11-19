@@ -346,6 +346,48 @@ internal static class Icons
         g.FillRectangle(bar, 11 * k, 3 * k, 2.2f * k, 10 * k);
     });
 
+    /// <summary>Two arrows chasing round a loop: Repeat.</summary>
+    public static Bitmap Repeat(int s) => Make(s, (g, k) =>
+    {
+        using var p = new Pen(Theme.Text, 1.7f * k);
+        g.DrawArc(p, 2.5f * k, 3 * k, 11 * k, 10 * k, 200, 140);
+        g.DrawArc(p, 2.5f * k, 3 * k, 11 * k, 10 * k, 20, 140);
+        using var a = new SolidBrush(Theme.Accent);
+        g.FillPolygon(a, [new PointF(12.2f * k, 1.6f * k), new PointF(15.2f * k, 5.6f * k), new PointF(10.6f * k, 6.4f * k)]);
+        g.FillPolygon(a, [new PointF(3.8f * k, 14.4f * k), new PointF(0.8f * k, 10.4f * k), new PointF(5.4f * k, 9.6f * k)]);
+    });
+
+    /// <summary>A gauge with its needle: playback speed.</summary>
+    public static Bitmap Speed(int s) => Make(s, (g, k) =>
+    {
+        using var p = new Pen(Theme.Text, 1.7f * k);
+        g.DrawArc(p, 1.5f * k, 3 * k, 13 * k, 13 * k, 180, 180);
+        g.DrawLine(p, 1.5f * k, 9.5f * k, 14.5f * k, 9.5f * k);
+        using var n = new Pen(Theme.Accent, 1.9f * k) { StartCap = LineCap.Round, EndCap = LineCap.Round };
+        g.DrawLine(n, 8 * k, 9.5f * k, 12 * k, 5 * k);
+        using var hub = new SolidBrush(Theme.Accent);
+        g.FillEllipse(hub, 6.6f * k, 8.1f * k, 2.8f * k, 2.8f * k);
+    });
+
+    /// <summary>A curved path ending in a cursor dot: how the mouse moves.</summary>
+    public static Bitmap MousePath(int s) => Make(s, (g, k) =>
+    {
+        using var p = new Pen(Theme.Text, 1.6f * k) { DashStyle = DashStyle.Dash };
+        g.DrawBezier(p, 2 * k, 13 * k, 4 * k, 3 * k, 10 * k, 14 * k, 13 * k, 4 * k);
+        using var a = new SolidBrush(Theme.Accent);
+        g.FillEllipse(a, 11 * k, 2 * k, 4 * k, 4 * k);
+        g.FillEllipse(a, 0.6f * k, 11.6f * k, 3 * k, 3 * k);
+    });
+
+    /// <summary>A power symbol: what happens when playback is done.</summary>
+    public static Bitmap Power(int s) => Make(s, (g, k) =>
+    {
+        using var p = new Pen(Theme.Text, 1.8f * k) { StartCap = LineCap.Round, EndCap = LineCap.Round };
+        g.DrawArc(p, 2.5f * k, 3 * k, 11 * k, 11 * k, 300, 300);
+        using var a = new Pen(Theme.Accent, 1.9f * k) { StartCap = LineCap.Round, EndCap = LineCap.Round };
+        g.DrawLine(a, 8 * k, 1.5f * k, 8 * k, 8 * k);
+    });
+
     /// <summary>Funnel: the playback filter.</summary>
     public static Bitmap Filter(int s) => Make(s, (g, k) =>
     {

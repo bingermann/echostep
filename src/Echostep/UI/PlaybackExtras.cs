@@ -147,7 +147,7 @@ internal abstract class SmallDialog : Form
         using var dlg = new OpenFileDialog
         {
             Filter = "Echostep files (*.estep;*.omr;*.orec)|*.estep;*.omr;*.orec|All files|*.*",
-            InitialDirectory = string.IsNullOrWhiteSpace(current) ? null : Path.GetDirectoryName(current),
+            InitialDirectory = string.IsNullOrWhiteSpace(current) ? AppPaths.MacrosDir : Path.GetDirectoryName(current),
         };
         return dlg.ShowDialog(owner) == DialogResult.OK ? dlg.FileName : null;
     }
@@ -347,5 +347,26 @@ internal sealed class ScheduleDialog : SmallDialog
         {
             return (false, ex.Message);
         }
+    }
+}
+
+/// <summary>Asks for one whole number (used by Repeat → Other number…).</summary>
+internal sealed class NumberDialog : SmallDialog
+{
+    private readonly IntBox _box;
+
+    /// <summary>The number entered; only meaningful after OK.</summary>
+    public int Value => _box.Value;
+
+    public NumberDialog(string title, string prompt, int value, int min, int max) : base(title)
+    {
+        _box = FieldGrid.NewInt(Math.Clamp(value, min, max), min, max, 110);
+        Grid.Row(prompt, _box, new Label { Text = $"{min:N0}–{max:N0}", AutoSize = true, ForeColor = Theme.Muted });
+        var ok = AddButton("OK", primary: true, DialogResult.OK);
+        var cancel = AddButton("Cancel", result: DialogResult.Cancel);
+        AcceptButton = ok;
+        CancelButton = cancel;
+        Shown += (_, _) => { _box.Focus(); _box.SelectAll(); };
+        Finish();
     }
 }

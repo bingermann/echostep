@@ -20,6 +20,7 @@ internal sealed class RibbonButton : Control
     private readonly Func<Bitmap>? _iconFactory;
     private readonly RibbonStyle _style;
     private string _caption;
+    private string? _value;
     private ContextMenuStrip? _menu;
     private bool _hover, _down, _checked;
 
@@ -46,6 +47,17 @@ internal sealed class RibbonButton : Control
         var old = _icon;
         _icon = _iconFactory();
         old?.Dispose();
+        Invalidate();
+    }
+
+    /// <summary>
+    /// A second, muted line under the caption showing the current choice (e.g. "1×" under Speed). With a menu,
+    /// the ▾ goes after it, so the button reads as "Speed / 1× ▾".
+    /// </summary>
+    public void SetValue(string? value)
+    {
+        if (_value == value) return;
+        _value = value;
         Invalidate();
     }
 
@@ -109,7 +121,7 @@ internal sealed class RibbonButton : Control
                 break;
 
             default:
-                var caption = _menu is null ? _caption : _caption + " ▾";
+                var caption = _menu is null || _value is not null ? _caption : _caption + " ▾";
                 var top = 4;
                 if (_icon is not null)
                 {
@@ -122,6 +134,17 @@ internal sealed class RibbonButton : Control
                         g.DrawImage(_icon, new Rectangle(x, top, _icon.Width, _icon.Height), 0, 0, _icon.Width, _icon.Height, GraphicsUnit.Pixel, faded);
                     }
                     top += _icon.Height + 2;
+                }
+                if (_value is not null)
+                {
+                    // Name on one line, current choice under it.
+                    const TextFormatFlags one = TextFormatFlags.HorizontalCenter | TextFormatFlags.NoPadding | TextFormatFlags.SingleLine |
+                                                TextFormatFlags.EndEllipsis | TextFormatFlags.Top;
+                    var line = TextRenderer.MeasureText(g, "Ag", Font, new Size(Width, 100), one).Height;
+                    TextRenderer.DrawText(g, caption, Font, new Rectangle(1, top, Width - 2, line), text, one);
+                    var value = _menu is null ? _value : _value + " ▾";
+                    TextRenderer.DrawText(g, value, Font, new Rectangle(1, top + line, Width - 2, line), Enabled ? Theme.Muted : Theme.Disabled, one);
+                    break;
                 }
                 var flags = TextFormatFlags.HorizontalCenter | TextFormatFlags.NoPadding | TextFormatFlags.WordBreak |
                             (_icon is null ? TextFormatFlags.VerticalCenter : TextFormatFlags.Top);

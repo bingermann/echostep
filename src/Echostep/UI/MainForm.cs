@@ -206,47 +206,95 @@ internal sealed class MainForm : Form
         searchBtn.Click += (_, _) => _editor!.OpenFind(false);
         _idleOnly.AddRange([mouse, keyPress, wait, flow, more, editBtn, deleteBtn]);
 
-        // Playback tab
+        // Playback tab: every setting is a big button showing its current value; click it to choose from a menu.
         Transport(playTab);
-        ComboBox Choice(string[] items, int index, Action<int> changed)
-        {
-            var box = new ThemedCombo { DropDownStyle = ComboBoxStyle.DropDownList };
-            box.Items.AddRange(items);
-            box.SelectedIndex = Math.Clamp(index, 0, items.Length - 1);
-            box.SelectedIndexChanged += (_, _) => changed(box.SelectedIndex);
-            return box;
-        }
-        playTab.Note("Mouse:", 184, 6);
-        playTab.Put(Choice(["As recorded", "Linear", "Spline", "Natural"], s0.MousePath, i => Program.Settings.MousePath = i), 232, 6, 104, 22,
-            "Mouse path: how mouse moves are replayed (as recorded, or smoothed into straight lines, splines or natural curves)");
-        playTab.Note("Repeat:", 184, 30);
-        var repeat = playTab.Put(new IntBox(Math.Max(1, s0.RepeatCount), 1, 999_999, 70), 232, 30, 70, 22, "How many times Play runs the whole macro (1–999,999)");
-        repeat.TextChanged += (_, _) => Program.Settings.RepeatCount = repeat.Value;
-        playTab.Note("Speed:", 184, 54);
-        var speedIndex = Array.FindIndex(Speeds, v => Math.Abs(v - s0.PlaybackSpeed) < 0.001);
-        playTab.Put(Choice(Speeds.Select(v => v.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "×").ToArray(),
-            speedIndex < 0 ? 2 : speedIndex, i => Program.Settings.PlaybackSpeed = Speeds[i]), 232, 54, 70, 22,
-            "Plays Wait and mouse-move times faster or slower. Timeouts and Wait until time are not changed.");
-        playTab.Separator(342);
-        playTab.Put(Choice(AfterPlaybackNames, 0, i => Program.Settings.AfterPlayback = i), 350, 8, 104, 22,
-            "What to do when Play finishes. Always starts at No action when Echostep opens.");
-        var countdown = playTab.Put(new CheckBox { Text = "Countdown", Checked = s0.ShowCountdown }, 350, 38, 104, 19,
-            "Show a countdown you can cancel before the after-playback action");
-        countdown.CheckedChanged += (_, _) => Program.Settings.ShowCountdown = countdown.Checked;
-        playTab.Caption("After playback", 346, 112);
-        playTab.Separator(460);
 
-        // Playback filter: one button with a menu of tickable types (it stays open while ticking).
-        var filterBtn = Big(playTab, "Filter", () => Icons.Filter(px), 468, 48, "Choose which action types are shown in the list and played");
+        // A big button with a menu of choices; the chosen one is ticked and shown under the button's name.
+        RibbonButton ChoiceButton(string caption, Func<Bitmap> icon, int x, int width, string tip, string[] choices,
+            Func<int> get, Action<int> set, Func<int, string> shortName, params ToolStripItem[] extra)
+        {
+            var btn = Big(playTab, caption, icon, x, width, tip);
+            var menu = Theme.Track(new ContextMenuStrip { Font = Theme.UiFont });
+            var items = new List<ToolStripMenuItem>();
+            for (var n = 0; n < choices.Length; n++)
+            {
+                var index = n;
+                var item = new ToolStripMenuItem(choices[n]);
+                item.Click += (_, _) =>
+                {
+                    set(index);
+                    btn.SetValue(shortName(index));
+                };
+                items.Add(item);
+                menu.Items.Add(item);
+            }
+            if (extra.Length > 0)
+            {
+                menu.Items.Add(new ToolStripSeparator());
+                menu.Items.AddRange(extra);
+            }
+            menu.Opening += (_, _) =>
+            {
+                var current = get();
+                for (var n = 0; n < items.Count; n++) items[n].Checked = n == current;
+            };
+            btn.SetMenu(menu);
+            btn.SetValue(shortName(get()));
+            return btn;
+        }
+
+        // Repeat
+        int[] repeatChoices = [1, 2, 3, 5, 10, 25, 100];
+        string Times(int n) => n == 1 ? "Once" : $"{n:N0}×";
+        RibbonButton? repeatBtn = null;
+        var otherRepeat = new ToolStripMenuItem("Other number…");
+        otherRepeat.Click += (_, _) =>
+        {
+            using var dlg = new NumberDialog("Repeat", "Play the macro this many times:", Program.Settings.RepeatCount, 1, 999_999);
+            if (dlg.ShowDialog(this) != DialogResult.OK) return;
+            Program.Settings.RepeatCount = dlg.Value;
+            repeatBtn!.SetValue(Times(dlg.Value));
+        };
+        repeatBtn = ChoiceButton("Repeat", () => Icons.Repeat(px), 184, 60, "How many times Play runs the whole macro",
+            repeatChoices.Select(n => n == 1 ? "Once" : $"{n} times").ToArray(),
+            () => Array.IndexOf(repeatChoices, Program.Settings.RepeatCount),
+            n => Program.Settings.RepeatCount = repeatChoices[n],
+            n => Times(repeatChoices[n]), otherRepeat);
+        repeatBtn.SetValue(Times(Math.Max(1, s0.RepeatCount)));
+
+        // Speed
+        string SpeedText(double v) => v.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "×";
+        ChoiceButton("Speed", () => Icons.Speed(px), 244, 56,
+            "Plays Wait and mouse-move times faster or slower. Timeouts and Wait until time are not changed.",
+            Speeds.Select(v => SpeedText(v) + (v == 1 ? " (normal)" : "")).ToArray(),
+            () => Array.FindIndex(Speeds, v => Math.Abs(v - Program.Settings.PlaybackSpeed) < 0.001),
+            n => Program.Settings.PlaybackSpeed = Speeds[n],
+            n => SpeedText(Speeds[n]));
+
+        // Mouse path
+        string[] pathNames = ["As recorded", "Straight lines", "Smooth curves (spline)", "Natural curves"];
+        string[] pathShort = ["Recorded", "Straight", "Smooth", "Natural"];
+        ChoiceButton("Mouse", () => Icons.MousePath(px), 300, 64, "How mouse moves are replayed: as recorded, or smoothed",
+            pathNames, () => Program.Settings.MousePath, n => Program.Settings.MousePath = n, n => pathShort[Math.Clamp(n, 0, 3)]);
+
+        // Filter: tick boxes for the action types to show and play (the menu stays open while ticking)
+        var filterBtn = Big(playTab, "Filter", () => Icons.Filter(px), 364, 60, "Choose which action types are shown in the list and played");
         var filterMenu = Theme.Track(new ContextMenuStrip { Font = Theme.UiFont });
         filterMenu.Items.Add(new ToolStripLabel("Show and play:") { ForeColor = Theme.Muted });
-        void ShowFilterState() => filterBtn.SetChecked((PlaybackFilter)Program.Settings.PlaybackFilter != PlaybackFilter.All);
-        foreach (var (text, flag) in new[]
-                 {
-                     ("Mouse moves", PlaybackFilter.MouseMoves), ("Mouse clicks", PlaybackFilter.MouseClicks),
-                     ("Key presses", PlaybackFilter.KeyPresses), ("Wait times", PlaybackFilter.WaitTimes),
-                     ("Focus changes", PlaybackFilter.FocusChanges),
-                 })
+        var filterTypes = new[]
+        {
+            ("Mouse moves", PlaybackFilter.MouseMoves), ("Mouse clicks", PlaybackFilter.MouseClicks),
+            ("Key presses", PlaybackFilter.KeyPresses), ("Wait times", PlaybackFilter.WaitTimes),
+            ("Focus changes", PlaybackFilter.FocusChanges),
+        };
+        void ShowFilterState()
+        {
+            var f = (PlaybackFilter)Program.Settings.PlaybackFilter;
+            var shown = filterTypes.Count(t => f.HasFlag(t.Item2));
+            filterBtn.SetValue(shown == filterTypes.Length ? "All" : $"{shown} of {filterTypes.Length}");
+            filterBtn.SetChecked(shown != filterTypes.Length);
+        }
+        foreach (var (text, flag) in filterTypes)
         {
             var item = new ToolStripMenuItem(text) { CheckOnClick = true, Checked = ((PlaybackFilter)s0.PlaybackFilter).HasFlag(flag) };
             item.CheckedChanged += (_, _) =>
@@ -262,7 +310,19 @@ internal sealed class MainForm : Form
         filterMenu.Closing += (_, e) => { if (e.CloseReason == ToolStripDropDownCloseReason.ItemClicked) e.Cancel = true; };
         filterBtn.SetMenu(filterMenu);
         ShowFilterState();
-        _stepBtn = Big(playTab, "Step", () => Icons.StepIcon(px), 516, 40, "While paused: run one row, then pause again", () => _player?.Step());
+        playTab.Caption("Playback options", 184, 240);
+        playTab.Separator(430);
+
+        // When done (after-playback action), with the countdown option in the same menu
+        string[] doneShort = ["Nothing", "Shut down", "Restart", "Lock", "Log out", "Standby"];
+        var countdownItem = new ToolStripMenuItem("Show a countdown first (cancellable)") { CheckOnClick = true, Checked = s0.ShowCountdown };
+        countdownItem.CheckedChanged += (_, _) => Program.Settings.ShowCountdown = countdownItem.Checked;
+        ChoiceButton("When done", () => Icons.Power(px), 438, 66,
+            "What the computer does when Play finishes. Goes back to Nothing each time Echostep opens.",
+            AfterPlaybackNames, () => Program.Settings.AfterPlayback, n => Program.Settings.AfterPlayback = n,
+            n => doneShort[Math.Clamp(n, 0, doneShort.Length - 1)], countdownItem);
+        playTab.Separator(510);
+        _stepBtn = Big(playTab, "Step", () => Icons.StepIcon(px), 516, 42, "While paused: run one row, then pause again", () => _player?.Step());
 
         // View tab
         var lineNumbers = Big(viewTab, "Show line numbers", () => Icons.Lines(px, numbered: true), 8, 70, "Show or hide the line-number column");
