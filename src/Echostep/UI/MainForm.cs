@@ -158,50 +158,53 @@ internal sealed class MainForm : Form
             return (name, () => InsertAction(create()));
         }
 
+        // Both tabs are laid out to fit the window's minimum width (588 px), so the ribbon never needs scrolling.
         // Play, Record (each with its ▾ strip) and Stop sit at the same place on both tabs.
         void Transport(RibbonPanel panel)
         {
-            _playBtns.Add(Big(panel, "Play", () => Icons.Play(px), 8, 64, "Play from the top. While playing: pause and resume.", PlayOrPause, height: 54));
-            var playStrip = panel.Put(new RibbonButton("", (Bitmap?)null, RibbonStyle.Strip), 8, 62, 64, 16, "More ways to play");
+            _playBtns.Add(Big(panel, "Play", () => Icons.Play(px), 8, 56, "Play from the top. While playing: pause and resume.", PlayOrPause, height: 54));
+            var playStrip = panel.Put(new RibbonButton("", (Bitmap?)null, RibbonStyle.Strip), 8, 62, 56, 16,
+                "More ways to play: ignoring breakpoints, from or until the selected row, on a schedule, or with a hotkey");
             playStrip.SetMenu(MenuOf(
                 ("Play ignoring breakpoints", () => Play(PlayKind.IgnoreBreakpoints)),
                 ("Play until selected", () => Play(PlayKind.UntilSelected)),
                 ("Play from selected", () => Play(PlayKind.FromSelected)),
-                ("Play selected", () => Play(PlayKind.SelectedOnly))));
-            var record = Big(panel, "Record", () => Icons.Record(px), 72, 72, "New recording (replaces the list after asking)",
+                ("Play selected", () => Play(PlayKind.SelectedOnly)),
+                (null, null),
+                ("Schedule…", OpenSchedules),
+                ("Macro hotkeys…", OpenMacroHotkeys)));
+            var record = Big(panel, "Record", () => Icons.Record(px), 64, 60, "New recording (replaces the list after asking)",
                 () => StartRecording(RecordMode.Replace), height: 54);
-            var recordStrip = panel.Put(new RibbonButton("", (Bitmap?)null, RibbonStyle.Strip), 72, 62, 72, 16, "More ways to record");
+            var recordStrip = panel.Put(new RibbonButton("", (Bitmap?)null, RibbonStyle.Strip), 64, 62, 60, 16, "More ways to record");
             recordStrip.SetMenu(MenuOf(
                 ("Append recording", () => StartRecording(RecordMode.Append)),
                 ("Insert recording", () => StartRecording(RecordMode.Insert))));
-            _stopBtns.Add(Big(panel, "Stop", () => Icons.Stop(px), 144, 48, "Stop recording or playback", StopRecordingOrPlayback));
+            _stopBtns.Add(Big(panel, "Stop", () => Icons.Stop(px), 124, 48, "Stop recording or playback", StopRecordingOrPlayback));
             _idleOnly.AddRange([playStrip, record, recordStrip]);
-            panel.Separator(196);
+            panel.Separator(176);
         }
 
         // Record and Edit tab
         Transport(editTab);
-        var mouse = Big(editTab, "Mouse", () => Icons.Mouse(px), 201, 48, "Insert a mouse action below the selected row");
+        var mouse = Big(editTab, "Mouse", () => Icons.Mouse(px), 182, 48, "Insert a mouse action below the selected row");
         mouse.SetMenu(MenuOf(Insert("Click"), Insert("Move"), Insert("Wheel")));
-        var keyPress = Big(editTab, "Key press", () => Icons.Key(px), 249, 75, "Insert a Key press below the selected row", () => InsertAction(new KeyAction()));
-        var wait = Big(editTab, "Wait", () => Icons.Clock(px), 324, 47, "Insert a wait below the selected row");
+        var keyPress = Big(editTab, "Key", () => Icons.Key(px), 230, 48, "Insert a Key press below the selected row", () => InsertAction(new KeyAction()));
+        var wait = Big(editTab, "Wait", () => Icons.Clock(px), 278, 48, "Insert a wait below the selected row");
         wait.SetMenu(MenuOf(Insert("Wait"), Insert("Wait for pixel"), Insert("Wait for screen change"), (null, null),
             Insert("Wait until time"), Insert("Wait for pixel change")));
-        var flow = Big(editTab, "Flow", () => Icons.Flow(px), 371, 75, "Insert a flow action below the selected row");
+        var flow = Big(editTab, "Flow", () => Icons.Flow(px), 326, 48, "Insert a flow action below the selected row");
         flow.SetMenu(MenuOf(Insert("Goto"), Insert("Repeat"), (null, null), Insert("If time / day / window"), Insert("If pixel"), (null, null), Insert("Window focus")));
-        editTab.Caption("Add Action", 208, 238);
-        editTab.Separator(452);
-        var editBtn = editTab.Put(new RibbonButton("Edit", (Bitmap?)null, RibbonStyle.Small), 464, 8, 142, 25, "Open the selected action's dialog");
-        editBtn.Click += (_, _) => _editor!.EditSelected();
-        var deleteBtn = editTab.Put(new RibbonButton("Delete", (Bitmap?)null, RibbonStyle.Small), 464, 33, 142, 25, "Delete the selection");
-        deleteBtn.Click += (_, _) => _editor!.DeleteSelected();
-        var searchBtn = editTab.Put(new RibbonButton("Find", (Bitmap?)null, RibbonStyle.Small), 464, 58, 142, 25, "Find rows (Ctrl+F); tick Replace in it to replace (Ctrl+H)");
-        searchBtn.Click += (_, _) => _editor!.OpenFind(false);
-        var expertSep = editTab.Put(new Panel { BackColor = Theme.Border }, 612, 4, 1, 90);
-        var more = Big(editTab, "More", () => Icons.Spark(px), 620, 56, "More actions: Find image, Type text, Set variable, Run / open, Message / sound");
+        var more = Big(editTab, "More", () => Icons.Spark(px), 374, 48, "More actions: Find image, Type text, Set variable, Run / open, Message / sound");
         more.SetMenu(MenuOf(ActionListEditor.MoreActionNames.Select(Insert).ToArray()));
-        var moreCaption = editTab.Put(new Label { Text = "More", ForeColor = Theme.Muted, TextAlign = ContentAlignment.MiddleCenter, AutoSize = false }, 614, 80, 68, 16);
-        _idleOnly.AddRange([mouse, keyPress, wait, flow, editBtn, deleteBtn, more]);
+        editTab.Caption("Add Action", 182, 240);
+        editTab.Separator(428);
+        var editBtn = editTab.Put(new RibbonButton("Edit", (Bitmap?)null, RibbonStyle.Small), 436, 8, 116, 25, "Open the selected action's dialog");
+        editBtn.Click += (_, _) => _editor!.EditSelected();
+        var deleteBtn = editTab.Put(new RibbonButton("Delete", (Bitmap?)null, RibbonStyle.Small), 436, 33, 116, 25, "Delete the selection");
+        deleteBtn.Click += (_, _) => _editor!.DeleteSelected();
+        var searchBtn = editTab.Put(new RibbonButton("Find", (Bitmap?)null, RibbonStyle.Small), 436, 58, 116, 25, "Find rows (Ctrl+F); tick Replace in it to replace (Ctrl+H)");
+        searchBtn.Click += (_, _) => _editor!.OpenFind(false);
+        _idleOnly.AddRange([mouse, keyPress, wait, flow, more, editBtn, deleteBtn]);
 
         // Playback tab
         Transport(playTab);
@@ -213,53 +216,53 @@ internal sealed class MainForm : Form
             box.SelectedIndexChanged += (_, _) => changed(box.SelectedIndex);
             return box;
         }
-        playTab.Note("Mouse path:", 204, 8);
-        playTab.Put(Choice(["As recorded", "Linear", "Spline", "Natural"], s0.MousePath, i => Program.Settings.MousePath = i), 286, 8, 146, 22,
-            "How mouse moves are replayed: as recorded, or smoothed into straight lines, splines or natural curves");
-        playTab.Note("Repeat:", 204, 37);
-        var repeat = playTab.Put(new IntBox(Math.Max(1, s0.RepeatCount), 1, 999_999, 70), 286, 37, 70, 22, "How many times Play runs the whole macro (1–999,999)");
+        playTab.Note("Mouse:", 184, 6);
+        playTab.Put(Choice(["As recorded", "Linear", "Spline", "Natural"], s0.MousePath, i => Program.Settings.MousePath = i), 232, 6, 104, 22,
+            "Mouse path: how mouse moves are replayed (as recorded, or smoothed into straight lines, splines or natural curves)");
+        playTab.Note("Repeat:", 184, 30);
+        var repeat = playTab.Put(new IntBox(Math.Max(1, s0.RepeatCount), 1, 999_999, 70), 232, 30, 70, 22, "How many times Play runs the whole macro (1–999,999)");
         repeat.TextChanged += (_, _) => Program.Settings.RepeatCount = repeat.Value;
-        playTab.Caption("Playback Properties", 204, 226);
-        playTab.Separator(439);
-        playTab.Note("After playback:", 447, 8);
-        playTab.Put(Choice(AfterPlaybackNames, 0, i => Program.Settings.AfterPlayback = i), 447, 32, 138, 22,
+        playTab.Note("Speed:", 184, 54);
+        var speedIndex = Array.FindIndex(Speeds, v => Math.Abs(v - s0.PlaybackSpeed) < 0.001);
+        playTab.Put(Choice(Speeds.Select(v => v.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "×").ToArray(),
+            speedIndex < 0 ? 2 : speedIndex, i => Program.Settings.PlaybackSpeed = Speeds[i]), 232, 54, 70, 22,
+            "Plays Wait and mouse-move times faster or slower. Timeouts and Wait until time are not changed.");
+        playTab.Separator(342);
+        playTab.Put(Choice(AfterPlaybackNames, 0, i => Program.Settings.AfterPlayback = i), 350, 8, 104, 22,
             "What to do when Play finishes. Always starts at No action when Echostep opens.");
-        var countdown = playTab.Put(new CheckBox { Text = "Show countdown", Checked = s0.ShowCountdown }, 447, 58, 138, 19,
+        var countdown = playTab.Put(new CheckBox { Text = "Countdown", Checked = s0.ShowCountdown }, 350, 38, 104, 19,
             "Show a countdown you can cancel before the after-playback action");
         countdown.CheckedChanged += (_, _) => Program.Settings.ShowCountdown = countdown.Checked;
-        playTab.Separator(591);
-        foreach (var (text, flag, x, y) in new[]
+        playTab.Caption("After playback", 346, 112);
+        playTab.Separator(460);
+
+        // Playback filter: one button with a menu of tickable types (it stays open while ticking).
+        var filterBtn = Big(playTab, "Filter", () => Icons.Filter(px), 468, 48, "Choose which action types are shown in the list and played");
+        var filterMenu = Theme.Track(new ContextMenuStrip { Font = Theme.UiFont });
+        filterMenu.Items.Add(new ToolStripLabel("Show and play:") { ForeColor = Theme.Muted });
+        void ShowFilterState() => filterBtn.SetChecked((PlaybackFilter)Program.Settings.PlaybackFilter != PlaybackFilter.All);
+        foreach (var (text, flag) in new[]
                  {
-                     ("Mouse moves", PlaybackFilter.MouseMoves, 600, 11), ("Mouse clicks", PlaybackFilter.MouseClicks, 600, 36),
-                     ("Key presses", PlaybackFilter.KeyPresses, 600, 61), ("Wait times", PlaybackFilter.WaitTimes, 740, 11),
-                     ("Focus changes", PlaybackFilter.FocusChanges, 740, 36),
+                     ("Mouse moves", PlaybackFilter.MouseMoves), ("Mouse clicks", PlaybackFilter.MouseClicks),
+                     ("Key presses", PlaybackFilter.KeyPresses), ("Wait times", PlaybackFilter.WaitTimes),
+                     ("Focus changes", PlaybackFilter.FocusChanges),
                  })
         {
-            var box = playTab.Put(new CheckBox { Text = text, Checked = ((PlaybackFilter)s0.PlaybackFilter).HasFlag(flag) }, x, y, x == 600 ? 132 : 146, 19,
-                "Unticked types are hidden in the list and skipped when playing");
-            box.CheckedChanged += (_, _) =>
+            var item = new ToolStripMenuItem(text) { CheckOnClick = true, Checked = ((PlaybackFilter)s0.PlaybackFilter).HasFlag(flag) };
+            item.CheckedChanged += (_, _) =>
             {
                 var f = (PlaybackFilter)Program.Settings.PlaybackFilter;
-                f = box.Checked ? f | flag : f & ~flag;
+                f = item.Checked ? f | flag : f & ~flag;
                 Program.Settings.PlaybackFilter = (int)f;
                 _editor!.SetFilter(f);
+                ShowFilterState();
             };
+            filterMenu.Items.Add(item);
         }
-        playTab.Caption("Playback filter", 600, 286);
-        playTab.Separator(892);
-        _stepBtn = Big(playTab, "Step", () => Icons.StepIcon(px), 900, 56, "While paused: run one row, then pause again", () => _player?.Step());
-        var playExpertSep = playTab.Put(new Panel { BackColor = Theme.Border }, 962, 4, 1, 90);
-        var speedNote = playTab.Note("Speed:", 970, 22);
-        var speedIndex = Array.FindIndex(Speeds, v => Math.Abs(v - s0.PlaybackSpeed) < 0.001);
-        var speed = playTab.Put(Choice(Speeds.Select(v => v.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture) + "×").ToArray(),
-            speedIndex < 0 ? 2 : speedIndex, i => Program.Settings.PlaybackSpeed = Speeds[i]), 1020, 20, 80, 22,
-            "Plays Wait and mouse-move times faster or slower. Timeouts and Wait until time are not changed.");
-        var scheduleBtn = playTab.Put(new RibbonButton("Schedule…", (Bitmap?)null, RibbonStyle.Small), 1110, 8, 130, 25, "Play a macro at set times with Windows Task Scheduler");
-        scheduleBtn.Click += (_, _) => OpenSchedules();
-        var hotkeysBtn = playTab.Put(new RibbonButton("Macro hotkeys…", (Bitmap?)null, RibbonStyle.Small), 1110, 33, 130, 25, "Hotkeys that play a macro file straight away");
-        hotkeysBtn.Click += (_, _) => OpenMacroHotkeys();
-        var playExpertCaption = playTab.Put(new Label { Text = "Extras", ForeColor = Theme.Muted, TextAlign = ContentAlignment.MiddleCenter, AutoSize = false }, 970, 80, 270, 16);
-        _idleOnly.AddRange([scheduleBtn, hotkeysBtn]);
+        filterMenu.Closing += (_, e) => { if (e.CloseReason == ToolStripDropDownCloseReason.ItemClicked) e.Cancel = true; };
+        filterBtn.SetMenu(filterMenu);
+        ShowFilterState();
+        _stepBtn = Big(playTab, "Step", () => Icons.StepIcon(px), 516, 40, "While paused: run one row, then pause again", () => _player?.Step());
 
         // View tab
         var lineNumbers = Big(viewTab, "Show line numbers", () => Icons.Lines(px, numbered: true), 8, 70, "Show or hide the line-number column");

@@ -77,7 +77,7 @@ Nothing that existed before was removed; where the spec and the existing app dis
   - The ▾ strip under Play: *Play ignoring breakpoints*, *Play until selected*, *Play from selected*, *Play selected row* (Ctrl+Down). *Play from selected* only chooses where to start: a Repeat or Goto that jumps back above that row keeps playing. *Play selected row* runs just that row.
   - Pause and resume with the pause key (default **Esc**, real key presses only) or the Play button, which turns into Pause/Resume. *Step* runs one row while paused.
   - Breakpoints (F9) pause before their row.
-  - Playback tab: mouse path (As recorded, Linear, Spline, Natural), repeat count, after-playback action (shutdown, restart, lock, log out, standby) with a cancellable 15-second countdown, and a type filter that hides and skips mouse moves, clicks, key presses, waits or focus changes.
+  - Playback tab: mouse path (As recorded, Linear, Spline, Natural), repeat count, after-playback action (shutdown, restart, lock, log out, standby) with a cancellable 15-second countdown, speed, and a **Filter** button whose menu hides and skips mouse moves, clicks, key presses, waits or focus changes.
   - The after-playback action always starts at *No action* when Echostep opens.
   - Optional abort on a real key press or mouse move (Settings).
 - **Editing:**
@@ -117,11 +117,11 @@ Not taken from the spec: click-to-capture for positions (Enter still saves), tol
   - **Run / open**: opens a program, file, folder or URL, and can wait until it closes.
   - **Message / sound**: plays a sound, shows a message, or asks Yes/No (Yes and No can go to different rows).
 - **If → Variable**: compares a variable using =, ≠, <, > or contains.
-- **Playback tab → Extras**, plus one setting:
-  - **Speed** (0.25× to 10×): scales Wait and mouse-move times. Timeouts are not changed.
+- **Playing extras**:
+  - **Speed** (Playback tab, 0.25× to 10×): scales Wait and mouse-move times. Timeouts are not changed.
   - **Progress box** (Settings → Playback, off by default): a click-through box in the corner showing the row, status, time and pass.
-  - **Macro hotkeys…**: a hotkey plays a macro file straight away, without opening it.
-  - **Schedule…**: creates Windows Task Scheduler tasks that run `Echostep.exe "file" --play --exit`.
+  - **Macro hotkeys…** (Play ▾ menu): a hotkey plays a macro file straight away, without opening it.
+  - **Schedule…** (Play ▾ menu): creates Windows Task Scheduler tasks that run `Echostep.exe "file" --play --exit`.
 
 Command line: `Echostep.exe "macro.estep" --play --exit` opens the macro, plays it minimized and then closes.
 

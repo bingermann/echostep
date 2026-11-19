@@ -346,6 +346,16 @@ internal static class Icons
         g.FillRectangle(bar, 11 * k, 3 * k, 2.2f * k, 10 * k);
     });
 
+    /// <summary>Funnel: the playback filter.</summary>
+    public static Bitmap Filter(int s) => Make(s, (g, k) =>
+    {
+        using var b = new SolidBrush(Theme.Text);
+        g.FillPolygon(b, [new PointF(2 * k, 3 * k), new PointF(14 * k, 3 * k), new PointF(9.2f * k, 8.6f * k), new PointF(9.2f * k, 13.5f * k),
+            new PointF(6.8f * k, 12.2f * k), new PointF(6.8f * k, 8.6f * k)]);
+        using var a = new SolidBrush(Theme.Accent);
+        g.FillRectangle(a, 2 * k, 3 * k, 12 * k, 1.6f * k);
+    });
+
     /// <summary>Four-point sparkle: the More button.</summary>
     public static Bitmap Spark(int s) => Make(s, (g, k) =>
     {
