@@ -98,7 +98,7 @@ internal sealed class FieldGrid : TableLayoutPanel
 internal sealed class DurationField : FlowLayoutPanel
 {
     private readonly TextBox _amount = new() { Width = 90, TextAlign = HorizontalAlignment.Right };
-    private readonly ComboBox _unit = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 128 };
+    private readonly ComboBox _unit = new ThemedCombo { DropDownStyle = ComboBoxStyle.DropDownList, Width = 128 };
     private readonly long _minMs, _maxMs;
 
     public DurationField(long ms, long minMs = 0, long maxMs = int.MaxValue, WaitUnit? unit = null)

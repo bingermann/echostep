@@ -128,7 +128,7 @@ internal abstract class SmallDialog : Form
             AutoSize = true, AutoSizeMode = AutoSizeMode.GrowAndShrink, ColumnCount = 1,
             Location = new Point(Padding.Left, Padding.Top), Margin = Padding.Empty,
         };
-        layout.Controls.Add(Grid, 0, 0);
+        layout.Controls.Add(DialogFit.Wrap(this, Grid, Buttons), 0, 0);
         layout.Controls.Add(Buttons, 0, 1);
         Controls.Add(layout);
         Theme.Apply(this);

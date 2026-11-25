@@ -171,18 +171,27 @@ internal sealed partial class ActionEditDialog
         }
     }
 
+    /// <summary>Shows or hides a whole row of the field grid: the control's cell and its caption.</summary>
+    private void SetRowVisible(Control c, bool on)
+    {
+        c.Visible = on;
+        if (_grid.GetControlFromPosition(0, _grid.GetRow(c)) is Label caption && caption != c) caption.Visible = on;
+    }
+
+    // Kept compact (several fields per row) so the dialog fits on a 1080-pixel screen even at 150 % scaling.
     private void FindImageFields(FindImageAction fi)
     {
-        _grid.Note("Looks for a picture on the screen, such as a button or an icon, even when it is not always in the same place. " +
-                   "Capture it once, then the macro can wait for it, click it, or check whether it is there. " +
-                   "Where it was found goes in {foundX} and {foundY}.", 440);
+        _grid.Note("Finds a picture on the screen (a button, an icon…) even when it moves. Its center goes in {foundX} and {foundY}.", 520);
+
+        // Image: small preview, then the two ways to get one, then its size
         var image = fi.Image;
-        var preview = new PictureBox { Width = 200, Height = 90, SizeMode = PictureBoxSizeMode.Zoom, BackColor = Theme.Bg, BorderStyle = BorderStyle.FixedSingle };
-        var size = new Label { AutoSize = true, ForeColor = Theme.Muted };
-        var capture = new RoundButton { Text = "Capture from screen…", AutoSize = true, Kind = ButtonKind.Primary };
+        var preview = new PictureBox { Width = 120, Height = 54, SizeMode = PictureBoxSizeMode.Zoom, BackColor = Theme.Bg, BorderStyle = BorderStyle.FixedSingle };
+        var capture = new RoundButton { Text = "Capture…", AutoSize = true, Kind = ButtonKind.Primary };
         var load = new RoundButton { Text = "Load file…", AutoSize = true };
-        _grid.Row("Image", preview, size);
-        _grid.Row("", capture, load);
+        var size = new Label { AutoSize = true, ForeColor = Theme.Muted };
+        _grid.Row("Image", preview, capture, load, size);
+        capture.Margin = load.Margin = new Padding(6, 14, 0, 0);
+        size.Margin = new Padding(8, 20, 0, 0);
         _tips.SetToolTip(capture, "Dims the screen: drag a tight rectangle around the button or icon (at most 400 × 400 pixels).");
         void ShowImage()
         {
@@ -234,18 +243,20 @@ internal sealed partial class ActionEditDialog
             }
         };
 
-        var where = _grid.Combo("Search", ["Entire screen", "Only in a zone (faster)"], null, false, 220);
+        // Where to look, and how exact the match must be
+        var where = new ThemedCombo { DropDownStyle = ComboBoxStyle.DropDownList, Width = 170 };
+        where.Items.AddRange(["Entire screen", "Only in a zone (faster)"]);
         where.SelectedIndex = fi.EntireScreen ? 0 : 1;
-        var zx = FieldGrid.NewInt(fi.X, -100_000, 100_000, 70);
-        var zy = FieldGrid.NewInt(fi.Y, -100_000, 100_000, 70);
-        var zw = FieldGrid.NewInt(fi.Width, 0, 100_000, 70);
-        var zh = FieldGrid.NewInt(fi.Height, 0, 100_000, 70);
-        var zoneRow = _grid.Row("Zone X, Y, W, H", zx, zy, zw, zh);
-        var define = new RoundButton { Text = "Define zone…", AutoSize = true };
-        var showZone = new RoundButton { Text = "Show zone", AutoSize = true };
-        var zoneButtons = _grid.Row("", define, showZone);
-        var tol = _grid.Int("Tolerance (0–255)", fi.Tolerance, 0, 255, 70);
-        _tips.SetToolTip(tol, "How much each color channel may differ. 0 needs an exact match; 20–40 copes with smoothed text and slight color changes.");
+        var tol = FieldGrid.NewInt(fi.Tolerance, 0, 255, 56);
+        _grid.Row("Search", where, new Label { Text = "Tolerance", AutoSize = true, ForeColor = Theme.Muted }, tol);
+        _tips.SetToolTip(tol, "How much each color channel may differ (0–255). 0 needs an exact match; 20–40 copes with smoothed text and slight color changes.");
+        var zx = FieldGrid.NewInt(fi.X, -100_000, 100_000, 64);
+        var zy = FieldGrid.NewInt(fi.Y, -100_000, 100_000, 64);
+        var zw = FieldGrid.NewInt(fi.Width, 0, 100_000, 64);
+        var zh = FieldGrid.NewInt(fi.Height, 0, 100_000, 64);
+        var define = new RoundButton { Text = "Define…", AutoSize = true };
+        var showZone = new RoundButton { Text = "Show", AutoSize = true };
+        var zoneRow = _grid.Row("Zone X, Y, W, H", zx, zy, zw, zh, define, showZone);
         define.Click += (_, _) =>
         {
             var restore = PixelUi.HideWindows(this);
@@ -260,24 +271,26 @@ internal sealed partial class ActionEditDialog
         var mouse = new ThemedCombo { DropDownStyle = ComboBoxStyle.DropDownList, Width = 150 };
         mouse.Items.AddRange(["No mouse action", "Move to it", "Left-click it", "Right-click it", "Middle-click it", "Double-click it"]);
         mouse.SelectedIndex = (int)fi.Mouse;
-        var anchor = new ThemedCombo { DropDownStyle = ComboBoxStyle.DropDownList, Width = 130 };
+        var anchor = new ThemedCombo { DropDownStyle = ComboBoxStyle.DropDownList, Width = 120 };
         anchor.Items.AddRange(["Centered", "Top-left", "Top-right", "Bottom-left", "Bottom-right"]);
         anchor.SelectedIndex = (int)fi.Anchor;
-        _grid.Row("Mouse action", mouse, new Label { Text = "at", AutoSize = true }, anchor);
-        var then = TargetField("Go to", fi.Then, includeStop: true, allowEmpty: true, "Where to go once the image is found.");
+        _grid.Row("Mouse", mouse, new Label { Text = "at", AutoSize = true }, anchor);
+        var then = TargetField("Then go to", fi.Then, includeStop: true, allowEmpty: true, "Where to go once the image is found.");
 
         _grid.Header("If it is not found");
-        var mode = _grid.Combo("Then", ["Keep looking (with a timeout)", "Check only once"], null, false, 240);
+        var mode = new ThemedCombo { DropDownStyle = ComboBoxStyle.DropDownList, Width = 150 };
+        mode.Items.AddRange(["Keep looking for", "Check only once"]);
         mode.SelectedIndex = fi.Once ? 1 : 0;
-        var timeoutField = _grid.Duration("Keep looking for", fi.TimeoutMs);
+        var timeoutField = new DurationField(fi.TimeoutMs);
+        _grid.Row("Look", mode, timeoutField);
         timeoutField.SetTip(_tips, "How long to keep looking before giving up. 0 looks forever (until Stop).");
         _validators.Add(() => mode.SelectedIndex == 0 ? timeoutField.Problem("how long to keep looking") : null);
         var timeout = new TimeoutValue(timeoutField);
-        var notFound = TargetField("…and then go to", fi.Once ? (string.IsNullOrWhiteSpace(fi.OnTimeout) ? Labels.Next : fi.OnTimeout) : fi.OnTimeout,
+        var notFound = TargetField("Then go to", fi.Once ? (string.IsNullOrWhiteSpace(fi.OnTimeout) ? Labels.Next : fi.OnTimeout) : fi.OnTimeout,
             includeStop: true, allowEmpty: true, "Where to go when the image is not there. With Check only once, next continues with the following row.");
 
         var test = new RoundButton { Text = "Test now", AutoSize = true };
-        var result = new Label { AutoSize = true, MaximumSize = new Size(320, 0) };
+        var result = new Label { AutoSize = true, MaximumSize = new Size(380, 0) };
         _grid.Row("", test, result);
         test.Click += (_, _) =>
         {
@@ -292,17 +305,17 @@ internal sealed partial class ActionEditDialog
             restore();
             if (at is { } found)
             {
-                result.Text = $"Found at {found.X}, {found.Y} (searched in {sw.ElapsedMilliseconds} ms).";
+                result.Text = $"Found at {found.X}, {found.Y} ({sw.ElapsedMilliseconds} ms).";
                 ZoneFlash.Show(new Rectangle(found.X, found.Y, p!.Width, p.Height));
             }
-            else result.Text = frame is null ? "Could not read the screen." : $"Not found right now (searched in {sw.ElapsedMilliseconds} ms). Try more tolerance?";
+            else result.Text = frame is null ? "Could not read the screen." : $"Not found right now ({sw.ElapsedMilliseconds} ms). Try more tolerance?";
         };
 
         void Sync()
         {
-            zoneRow.Enabled = zoneButtons.Enabled = where.SelectedIndex == 1;
+            SetRowVisible(zoneRow, where.SelectedIndex == 1);
             anchor.Enabled = mouse.SelectedIndex > 0;
-            timeoutField.Enabled = mode.SelectedIndex == 0;
+            timeoutField.Visible = mode.SelectedIndex == 0;
         }
         where.SelectedIndexChanged += (_, _) => Sync();
         mouse.SelectedIndexChanged += (_, _) => Sync();
@@ -312,6 +325,7 @@ internal sealed partial class ActionEditDialog
         _validators.Add(() => ImagePattern.TryDecode(image, out _) ? null : "Capture the image to look for (or load it from a file).");
         _validators.Add(() => where.SelectedIndex == 1 && (zw.Value <= 0 || zh.Value <= 0)
             ? "Define the zone to search (its width and height must be more than 0), or choose Entire screen." : null);
+        _validators.Add(() => tol.Value is < 0 or > 255 ? "Tolerance must be 0–255." : null);
         _apply.Add(() =>
         {
             fi.Image = image;

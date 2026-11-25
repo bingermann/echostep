@@ -346,6 +346,9 @@ internal static class Theme
         c.HandleCreated += (_, _) => Native.UseDarkEditTheme(c.Handle, IsDark);
     }
 
+    /// <summary>Themed scrollbars for a scrolling control.</summary>
+    public static void ScrollbarsFor(Control c) => DarkScrollbars(c);
+
     private static void DarkScrollbars(Control c)
     {
         if (c.IsHandleCreated) Native.UseDarkScrollbars(c.Handle, IsDark);
@@ -743,4 +746,46 @@ internal class ThemedCombo : ComboBox
 internal sealed class ScrollPanel : Panel
 {
     protected override Point ScrollToControl(Control activeControl) => DisplayRectangle.Location;
+}
+
+/// <summary>
+/// Keeps a dialog on the screen: its fields go in a scrolling area that is never taller than the screen allows,
+/// so the OK and Cancel buttons underneath are always visible.
+/// </summary>
+internal static class DialogFit
+{
+    public static Control Wrap(Form form, Control fields, Control buttons)
+    {
+        var host = new ScrollPanel { AutoScroll = true, Margin = Padding.Empty, Padding = Padding.Empty };
+        fields.Location = Point.Empty;
+        host.Controls.Add(fields);
+        Theme.ScrollbarsFor(host);
+
+        void Fit()
+        {
+            var area = Screen.FromControl(form.Owner ?? (Control)form).WorkingArea;
+            var k = form.DeviceDpi / 96f;
+            // Title bar and borders, the dialog's padding, the buttons and a little air.
+            var reserve = form.Height - form.ClientSize.Height + form.Padding.Vertical + buttons.Height + buttons.Margin.Vertical + (int)(24 * k);
+            var max = Math.Max((int)(200 * k), area.Height - reserve);
+            var need = fields.Height;
+            var scroll = need > max;
+            var size = new Size(fields.Width + (scroll ? SystemInformation.VerticalScrollBarWidth + (int)(6 * k) : 0), Math.Min(need, max));
+            if (host.Size != size) host.Size = size;
+        }
+
+        fields.SizeChanged += (_, _) => Fit();
+        form.Load += (_, _) => Fit();
+        // Once shown, make sure the whole dialog is inside the screen's working area.
+        form.Shown += (_, _) =>
+        {
+            Fit();
+            var area = Screen.FromControl(form).WorkingArea;
+            var x = Math.Clamp(form.Left, area.Left, Math.Max(area.Left, area.Right - form.Width));
+            var y = Math.Clamp(form.Top, area.Top, Math.Max(area.Top, area.Bottom - form.Height));
+            if (x != form.Left || y != form.Top) form.Location = new Point(x, y);
+        };
+        Fit();
+        return host;
+    }
 }

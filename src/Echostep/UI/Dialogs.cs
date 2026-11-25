@@ -129,7 +129,7 @@ internal sealed class FindDialog : Form
     private readonly ActionListEditor _editor;
     private readonly TextBox _find = new() { Width = 300 };
     private readonly TextBox _replace = new() { Width = 300 };
-    private readonly ComboBox _field = new() { DropDownStyle = ComboBoxStyle.DropDownList, Width = 220 };
+    private readonly ComboBox _field = new ThemedCombo { DropDownStyle = ComboBoxStyle.DropDownList, Width = 220 };
     private readonly CheckBox _replaceMode = new() { Text = "Replace", AutoSize = true };
     private readonly Label _result = new() { AutoSize = true, ForeColor = Theme.Muted, MaximumSize = new Size(300, 0) };
     private readonly List<Control> _replaceOnly = [];

@@ -81,7 +81,8 @@ internal sealed partial class ActionEditDialog : Form
         };
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
         layout.RowStyles.Add(new RowStyle(SizeType.AutoSize));
-        layout.Controls.Add(_grid, 0, 0);
+        // The fields scroll if they would not fit on the screen; the buttons stay visible below them.
+        layout.Controls.Add(DialogFit.Wrap(this, _grid, buttons), 0, 0);
         layout.Controls.Add(buttons, 0, 1);
         Controls.Add(layout);
         Theme.Apply(this);
