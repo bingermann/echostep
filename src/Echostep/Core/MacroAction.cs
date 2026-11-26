@@ -227,11 +227,27 @@ public sealed class WheelAction : MacroAction
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public bool Horizontal { get; set; }
 
-    /// <summary>Wheel amount; 120 is one notch. Positive scrolls up (or right).</summary>
-    public int Value { get; set; } = 120;
+    /// <summary>Wheel amount as Windows counts it: 120 is one notch. Positive scrolls up (or right), negative down (or left).</summary>
+    public int Value { get; set; } = -360;
+
+    public const int Notch = 120;
+
+    /// <summary>"down", "up", "left" or "right".</summary>
+    [JsonIgnore] public string Direction => Horizontal ? (Value < 0 ? "left" : "right") : (Value < 0 ? "down" : "up");
+
+    /// <summary>The amount in notches (always positive).</summary>
+    [JsonIgnore] public double Notches => Math.Abs(Value) / (double)Notch;
 
     [JsonIgnore] public override string DisplayName => "Wheel";
-    [JsonIgnore] public override string Parameters => $"{Value} {(Horizontal ? "horizontal" : "vertical")}";
+    [JsonIgnore] public override string Parameters
+    {
+        get
+        {
+            var n = Notches;
+            var amount = n.ToString(n == Math.Floor(n) ? "0" : "0.##", System.Globalization.CultureInfo.CurrentCulture);
+            return $"Scroll {Direction} {amount} notch{(n == 1 ? "" : "es")}";
+        }
+    }
     [JsonIgnore] public override PlaybackFilter Category => PlaybackFilter.MouseClicks;
 }
 

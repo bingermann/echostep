@@ -88,7 +88,7 @@ Nothing that existed before was removed; where the spec and the existing app dis
   - Find (Ctrl+F): find next, find previous, or select every matching row, in all parameters or one. Tick *Replace* in the dialog (or press Ctrl+H) to replace one or all. Go to line (Alt+G).
   - Line numbers can be hidden. Drag a column header divider to resize a column. Columns share the width in proportion, so they shrink and grow with the window, and the layout is remembered (in the Rules list too).
   - Every time setting (waits, timeouts, move durations, Repeat for a length of time, rule check/hold/cooldown, the recording wait threshold) takes an amount and a unit: milliseconds, seconds, minutes or hours, with decimals allowed. Files still store milliseconds; a time opens in the largest unit that shows it as a whole number (5000 ms opens as 5 seconds). Wait keeps the unit you chose.
-- **New actions:** Wheel, Wait for screen change (a dragged zone or the entire screen, with an optional mouse action on the changed area) and Window focus (waits for a program's window, brings it to the front, optionally moves and resizes it).
+- **New actions:** Wheel (scroll down, up, left or right by a number of notches, sent one notch at a time like a real wheel), Wait for screen change (a dragged zone or the entire screen, with an optional mouse action on the changed area) and Window focus (waits for a program's window, brings it to the front, optionally moves and resizes it).
 - **Extended actions:**
   - Click: double-click, Down, Up, X1/X2, relative to the pointer, random wiggle.
   - Move: start point, travel time, relative.
@@ -152,7 +152,7 @@ Macros are `.estep` files: UTF-8 JSON with one action per line, which keeps git 
 |---|---|
 | `click` | `x`, `y`, `button` (`left`/`right`/`middle`/`x1`/`x2`), optional `action` (`click`/`double`/`down`/`up`), `relative`, `wiggle`, `window` |
 | `move` | `x`, `y`, optional `fromX`, `fromY`, `durationMs`, `relative`, `window` |
-| `wheel` | `value` (120 = one notch; positive scrolls up/right), optional `horizontal` |
+| `wheel` | `value` (120 = one notch; positive scrolls up/right, negative down/left; played one notch at a time), optional `horizontal` |
 | `key` | `key` (e.g. `Enter`, `A`, `F5`, `Left`, `PageDown`), optional `ctrl`/`alt`/`shift`/`win`: `true`, `action` (`press`/`down`/`up`), `count` |
 | `wait` | `ms`, optional `unit` (`ms`, `s`, `min`, `h`): the unit it is shown and edited in; `ms` is always what plays |
 | `waitUntil` | `time`: local time of day, 24-hour, `"HH:mm"` or `"HH:mm:ss"`. If it has passed today, waits until tomorrow |

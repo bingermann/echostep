@@ -111,6 +111,8 @@ public sealed class Player
     public const int PixelPollMs = 25;
     public const int ScreenPollMs = 100;
     public const int ImagePollMs = 200;
+    /// <summary>Pause between wheel notches when one Wheel row turns it several notches.</summary>
+    public const int WheelStepMs = 15;
 
     private readonly List<MacroAction> _actions;
     private readonly IInputDriver _input;
@@ -373,8 +375,19 @@ public sealed class Player
                 return pc + 1;
 
             case WheelAction w:
-                _input.Wheel(w.Value, w.Horizontal);
+            {
+                // One notch at a time, like a real wheel: many programs scroll only a few lines per wheel message
+                // however big it is, so one huge message (or a merged recording) would barely move.
+                var left = w.Value;
+                while (left != 0)
+                {
+                    var step = Math.Sign(left) * Math.Min(Math.Abs(left), WheelAction.Notch);
+                    _input.Wheel(step, w.Horizontal);
+                    left -= step;
+                    if (left != 0) _clock.Sleep(WheelStepMs, ct);
+                }
                 return pc + 1;
+            }
 
             case KeyAction k:
                 if (!KeyNames.TryGetVk(k.Key, out var vk)) throw new PlaybackException($"unknown key \"{k.Key}\"");

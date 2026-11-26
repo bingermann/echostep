@@ -210,11 +210,28 @@ internal sealed partial class ActionEditDialog : Form
             }
             case WheelAction w:
             {
-                _grid.Note("Scrolls the mouse wheel. Positive values scroll up (or right); 120 is one notch.");
-                var orientation = _grid.Combo("Wheel orientation", ["Vertical", "Horizontal"], null, false, 170);
-                orientation.SelectedIndex = w.Horizontal ? 1 : 0;
-                var value = _grid.Int("Value", w.Value, -23_400, 23_400, 110);
-                _apply.Add(() => { w.Horizontal = orientation.SelectedIndex == 1; w.Value = value.Value; });
+                _grid.Note("Turns the mouse wheel where the mouse pointer is, one notch at a time like a real wheel. " +
+                           "One notch usually scrolls about 3 lines. To scroll a web page, move or click over it first.");
+                var direction = new ThemedCombo { DropDownStyle = ComboBoxStyle.DropDownList, Width = 110 };
+                direction.Items.AddRange(["Down", "Up", "Right", "Left"]);
+                direction.SelectedIndex = w.Direction switch { "up" => 1, "right" => 2, "left" => 3, _ => 0 };
+                var notches = new TextBox
+                {
+                    Width = 80, TextAlign = HorizontalAlignment.Right,
+                    Text = w.Notches.ToString(w.Notches == Math.Floor(w.Notches) ? "0" : "0.##", System.Globalization.CultureInfo.CurrentCulture),
+                };
+                _grid.Row("Scroll", direction, new Label { Text = "by", AutoSize = true }, notches, new Label { Text = "notches", AutoSize = true });
+                _tips.SetToolTip(notches, "How far to scroll: 1 notch is one click of a mouse wheel. Fractions like 0.5 work for fine scrolling.");
+                double? Amount() =>
+                    double.TryParse(notches.Text.Trim(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.CurrentCulture, out var v) &&
+                    v > 0 && v <= 1000 ? v : null;
+                _validators.Add(() => Amount() is null ? "Enter how many notches to scroll: a number above 0 and at most 1000." : null);
+                _apply.Add(() =>
+                {
+                    var units = (int)Math.Max(1, Math.Round(Amount()!.Value * WheelAction.Notch));
+                    w.Horizontal = direction.SelectedIndex >= 2;
+                    w.Value = direction.SelectedIndex is 0 or 3 ? -units : units;
+                });
                 break;
             }
             case KeyAction k:

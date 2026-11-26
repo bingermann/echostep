@@ -645,7 +645,7 @@ Test("Click kinds, wheel, key options, move paths", () =>
         new KeyAction { Key = "Shift", Option = KeyOption.Up },
     };
     Eq(PlayOutcome.Finished, new Player(a, input, new FakeScreen(), new FakeClock()).Run(default).Outcome, "finished");
-    Eq("click Left 110,105|click Right 200,200|click Right 200,200|X1 down 300,300|X1 up 320,300|wheel -240|wheel 120 h|key Shift down|press A|press A|press A|key Shift up",
+    Eq("click Left 110,105|click Right 200,200|click Right 200,200|X1 down 300,300|X1 up 320,300|wheel -120|wheel -120|wheel 120 h|key Shift down|press A|press A|press A|key Shift up",
         string.Join("|", input.Events), "events");
     var json = MacroFile.Serialize(a);
     Check(json.Contains("{\"type\":\"key\",\"key\":\"A\",\"count\":3}") && json.Contains("\"action\":\"double\"") && json.Contains("{\"type\":\"wheel\",\"value\":-240}"), "file format: " + json);
@@ -761,7 +761,7 @@ Test("Recorder: wheel, focus changes, Down/Up mode, sensitivity", () =>
         new(RecEventKind.KeyUp, 1060, Vk: 'A'),
     };
     var a = RecorderLogic.BuildActions(ev, new RecordingOptions());
-    Eq("Window focus|Wait|Wheel -240 vertical|Wait|Wheel 120 horizontal|Wait|Click 10, 10|Wait|Keypress A|Keypress A",
+    Eq("Window focus|Wait|Wheel Scroll down 2 notches|Wait|Wheel Scroll right 1 notch|Wait|Click 10, 10|Wait|Keypress A|Keypress A",
         string.Join("|", a.Select(x => x is WindowFocusAction or WaitAction ? x.DisplayName : x.ToString())), "combined mode");
     var du = RecorderLogic.BuildActions(ev, new RecordingOptions { SeparateDownUp = true, RecordFocusChanges = false });
     Eq("Wheel|Wheel|Mouse button down 10, 10|Mouse button up 60, 10|Key down A|Key up A",
@@ -1083,6 +1083,20 @@ Test("Run, Message and Type text with a delay", () =>
     var back = MacroFile.Parse(json);
     Check(back[0] is MessageAction { Box: MessageBoxKind.None, Sound: MessageSound.Warning } && back[1] is RunAction, "file round trip: " + json);
     Eq("Sound", back[0].DisplayName, "sound-only name");
+});
+
+Test("Wheel turns one notch at a time", () =>
+{
+    var input = new FakeInput();
+    var clock = new FakeClock();
+    var r = new Player([new WheelAction { Value = -1000 }, new WheelAction { Value = 240, Horizontal = true }], input, new FakeScreen(), clock).Run(default);
+    Eq(PlayOutcome.Finished, r.Outcome, "runs");
+    var wheels = input.Events.Where(e => e.StartsWith("wheel")).ToList();
+    Eq("wheel -120|wheel -120|wheel -120|wheel -120|wheel -120|wheel -120|wheel -120|wheel -120|wheel -40|wheel 120 h|wheel 120 h",
+        string.Join("|", wheels), "1000 down = 8 notches + 40; 240 right = 2 notches");
+    Eq((long)(8 + 1) * Player.WheelStepMs, clock.NowMs, "short pause between notches");
+    Eq("Scroll down 8.33 notches", new WheelAction { Value = -1000 }.Parameters, "text");
+    Eq("Scroll up 1 notch", new WheelAction { Value = 120 }.Parameters, "one notch");
 });
 
 Console.WriteLine();
