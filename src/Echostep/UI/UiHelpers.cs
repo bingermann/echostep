@@ -519,7 +519,16 @@ internal sealed class HotkeyField : FlowLayoutPanel
 {
     private const string NotSet = "Not set";
     private readonly KeyCaptureBox _box = new() { Width = 200 };
+    private readonly Label _status = new() { AutoSize = true, Margin = new Padding(8, 8, 0, 3) };
+    private readonly System.Windows.Forms.Timer _statusTimer = new() { Interval = 4000 };
     private string _value = "";
+
+    /// <summary>A new key was pressed in the box, or Clear was clicked (not raised when Value is set in code).</summary>
+    public event Action? ValueChanged;
+
+    /// <summary>The box got the keyboard (waiting for a key) / lost it. Global hotkeys are paused in between,
+    /// so pressing a combination that is already in use is captured instead of triggering it.</summary>
+    public event Action? CaptureStarted, CaptureEnded;
 
     public HotkeyField()
     {
@@ -530,13 +539,36 @@ internal sealed class HotkeyField : FlowLayoutPanel
         _box.Margin = new Padding(0, 4, 6, 3);
         _box.MinimumSize = new Size(_box.Width, 0);
         _box.Text = NotSet;
-        _box.Captured += (vk, mods) => _value = _box.Text = new Hotkey(mods, vk).ToString();
-        _box.Enter += (_, _) => _box.Text = "Press a key…";
-        _box.Leave += (_, _) => Show();
+        _box.Captured += (vk, mods) =>
+        {
+            _value = _box.Text = new Hotkey(mods, vk).ToString();
+            ValueChanged?.Invoke();
+        };
+        _box.Enter += (_, _) =>
+        {
+            _box.Text = "Press a key…";
+            CaptureStarted?.Invoke();
+        };
+        _box.Leave += (_, _) =>
+        {
+            Show();
+            CaptureEnded?.Invoke();
+        };
         var clear = new RoundButton { Text = "Clear", AutoSize = true, Padding = new Padding(10, 2, 10, 2), Margin = new Padding(0, 2, 0, 2) };
-        clear.Click += (_, _) => Value = "";
+        clear.Click += (_, _) =>
+        {
+            if (_value.Length == 0) return;
+            Value = "";
+            ValueChanged?.Invoke();
+        };
+        _statusTimer.Tick += (_, _) =>
+        {
+            _statusTimer.Stop();
+            _status.Text = "";
+        };
         Controls.Add(_box);
         Controls.Add(clear);
+        Controls.Add(_status);
     }
 
     /// <summary>The hotkey as text ("Ctrl+Alt+P"), or "" when not set.</summary>
@@ -551,7 +583,22 @@ internal sealed class HotkeyField : FlowLayoutPanel
         }
     }
 
+    /// <summary>Shows a short message beside the field: "✓ Saved" (ok), or why the key was not taken.</summary>
+    public void ShowResult(string text, bool ok)
+    {
+        _status.ForeColor = ok ? Theme.Success : Theme.Danger;
+        _status.Text = (ok ? "✓ " : "") + text;
+        _statusTimer.Stop();
+        if (ok) _statusTimer.Start(); // problems stay until the next change
+    }
+
     private new void Show() => _box.Text = _value.Length == 0 ? NotSet : _value;
 
     public new bool Focus() => _box.Focus();
+
+    protected override void Dispose(bool disposing)
+    {
+        if (disposing) _statusTimer.Dispose();
+        base.Dispose(disposing);
+    }
 }

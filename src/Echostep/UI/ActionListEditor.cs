@@ -86,7 +86,7 @@ internal sealed class ActionListEditor : UserControl
     private readonly Button _edit, _delete, _up, _down;
     private readonly bool _isMain;
     private readonly HashSet<string> _collapsed = [];
-    private readonly ToolStripMenuItem _miEnabled, _miGroupEnabled, _miBreakpoint, _miCollapse, _miEditAll;
+    private readonly ToolStripMenuItem _miEnabled, _miGroupEnabled, _miBreakpoint, _miCollapse, _miEditAll, _miJoinAbove, _miJoinBelow;
     private List<MacroAction> _actions = [];
     private UndoHistory _history = new([]);
     private Dictionary<int, List<string>> _problems = new();
@@ -237,7 +237,10 @@ internal sealed class ActionListEditor : UserControl
         ctx.Items.Add(rowColor);
         ctx.Items.Add(groupColor);
         ctx.Items.Add(Item("Group", GroupSelected, "Ctrl+G"));
+        ctx.Items.Add(_miJoinAbove = Item("Add to group above", () => AddSelectedToAdjacentGroup(above: true)));
+        ctx.Items.Add(_miJoinBelow = Item("Add to group below", () => AddSelectedToAdjacentGroup(above: false)));
         ctx.Items.Add(Item("Ungroup", UngroupSelected, "Ctrl+Shift+G"));
+        ctx.Items.Add(Item("Remove from group", RemoveSelectedFromGroup));
         ctx.Items.Add(_miCollapse = Item("Collapse group", ToggleCollapse));
         Sep();
         ctx.Items.Add(Item("Go to line number…", GoToLine, "Alt+G"));
@@ -268,6 +271,11 @@ internal sealed class ActionListEditor : UserControl
             _miGroupEnabled.Enabled = _miCollapse.Enabled = range is not null;
             _miGroupEnabled.Text = first is { Disabled: true } ? "Enable group" : "Disable group";
             _miCollapse.Text = first?.Group is { } g && _collapsed.Contains(g) ? "Expand group" : "Collapse group";
+            // Offered when a group sits right above (below) the selection and the selection is not all in it yet.
+            bool CanJoin(bool above) => sel.Count > 0 && MacroEditing.AdjacentGroup(_actions, sel[0], sel[^1], above) is { } adj &&
+                                        Enumerable.Range(sel[0], sel[^1] - sel[0] + 1).Any(i => _actions[i].Group != adj.Id);
+            _miJoinAbove.Enabled = CanJoin(above: true);
+            _miJoinBelow.Enabled = CanJoin(above: false);
         };
         _grid.ContextMenuStrip = ctx;
 
@@ -344,8 +352,10 @@ internal sealed class ActionListEditor : UserControl
     {
         if (_readOnly) return;
         var at = InsertIndex;
+        var group = SelectedCount > 0 ? MacroEditing.GroupForInsert(_actions, at) : null;
         using var dlg = new ActionEditDialog(action, _actions, -1);
         if (dlg.ShowDialog(FindForm()) != DialogResult.OK) return;
+        if (group is { } g) MacroEditing.JoinGroup([dlg.Result], g); // added inside a group: it joins the group
         _actions.Insert(at, dlg.Result);
         AfterChange(at, at);
         if (IsFilteredOut(dlg.Result))
@@ -353,11 +363,15 @@ internal sealed class ActionListEditor : UserControl
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
     }
 
-    /// <summary>Inserts several actions (e.g. a recording) at a row and selects them.</summary>
-    public void InsertRange(int at, IReadOnlyList<MacroAction> actions)
+    /// <summary>
+    /// Inserts several actions (e.g. a recording) at a row and selects them. With <paramref name="joinGroup"/>, rows
+    /// inserted inside a group (between two of its rows) join that group.
+    /// </summary>
+    public void InsertRange(int at, IReadOnlyList<MacroAction> actions, bool joinGroup = false)
     {
         if (actions.Count == 0) return;
         at = Math.Clamp(at, 0, _actions.Count);
+        if (joinGroup && MacroEditing.GroupForInsert(_actions, at) is { } g) MacroEditing.JoinGroup(actions, g);
         _actions.InsertRange(at, actions);
         AfterChange(at, at + actions.Count - 1);
     }
@@ -411,6 +425,9 @@ internal sealed class ActionListEditor : UserControl
     public void RefreshRows()
     {
         var selected = SelectedIndices();
+        // Rebuilding the rows scrolls the list to the top; remember where it was so editing a row stays in place.
+        var firstShown = _grid.Rows.Count > 0 ? _grid.FirstDisplayedScrollingRowIndex : -1;
+        var hOffset = _grid.HorizontalScrollingOffset;
         _refreshing = true;
         try
         {
@@ -427,6 +444,7 @@ internal sealed class ActionListEditor : UserControl
             }
             _grid.ResumeLayout();
             var keep = selected.Where(i => i < _grid.Rows.Count && _grid.Rows[i].Visible).ToList();
+            RestoreScroll(firstShown, hOffset);
             if (keep.Count > 0) _grid.CurrentCell = _grid.Rows[keep[0]].Cells[CLabel];
             _grid.ClearSelection();
             foreach (var i in keep) _grid.Rows[i].Selected = true;
@@ -436,6 +454,23 @@ internal sealed class ActionListEditor : UserControl
             _refreshing = false;
         }
         UpdateButtons();
+    }
+
+    /// <summary>Scrolls back to the row that was at the top before a rebuild (or the nearest visible one).</summary>
+    private void RestoreScroll(int firstShown, int hOffset)
+    {
+        if (firstShown < 0 || _grid.Rows.Count == 0) return;
+        var row = -1;
+        for (var i = Math.Min(firstShown, _grid.Rows.Count - 1); i < _grid.Rows.Count && row < 0; i++)
+            if (_grid.Rows[i].Visible) row = i;
+        for (var i = Math.Min(firstShown, _grid.Rows.Count - 1); i >= 0 && row < 0; i--)
+            if (_grid.Rows[i].Visible) row = i;
+        try
+        {
+            if (row >= 0) _grid.FirstDisplayedScrollingRowIndex = row;
+            if (hOffset > 0) _grid.HorizontalScrollingOffset = hOffset;
+        }
+        catch (InvalidOperationException) { /* the grid is not ready to scroll yet */ }
     }
 
     private bool IsFilteredOut(MacroAction a) => a.Category != PlaybackFilter.None && !_filter.HasFlag(a.Category);
@@ -864,7 +899,7 @@ internal sealed class ActionListEditor : UserControl
             return;
         }
         MacroClipboard.PrepareForPaste(_actions, pasted);
-        InsertRange(InsertIndex, pasted);
+        InsertRange(InsertIndex, pasted, joinGroup: SelectedCount > 0);
     }
 
     // ===========================================================================================
@@ -912,14 +947,28 @@ internal sealed class ActionListEditor : UserControl
         foreach (var i in rows) _actions[i].Disabled = disable;
     });
 
-    /// <summary>Wraps the selected rows (first to last) into one group.</summary>
+    /// <summary>
+    /// Wraps the selected rows (first to last) into one group. If the selection already holds rows of one group
+    /// (e.g. a group plus new rows next to it), that group grows to take them in, keeping its color.
+    /// </summary>
     public void GroupSelected() => ChangeSelected(sel =>
     {
-        var id = MacroEditing.NewGroupId(_actions);
+        var group = MacroEditing.SingleGroupIn(_actions, sel[0], sel[^1]) ?? (MacroEditing.NewGroupId(_actions), null);
         for (var i = sel[0]; i <= sel[^1]; i++)
         {
-            _actions[i].Group = id;
-            _actions[i].GroupColor = null;
+            _actions[i].Group = group.Id;
+            _actions[i].GroupColor = group.Color;
+        }
+    });
+
+    /// <summary>Puts the selected rows into the group right above (or below) them, keeping its color.</summary>
+    private void AddSelectedToAdjacentGroup(bool above) => ChangeSelected(sel =>
+    {
+        if (MacroEditing.AdjacentGroup(_actions, sel[0], sel[^1], above) is not { } g) return;
+        for (var i = sel[0]; i <= sel[^1]; i++)
+        {
+            _actions[i].Group = g.Id;
+            _actions[i].GroupColor = g.Color;
         }
     });
 
@@ -932,6 +981,9 @@ internal sealed class ActionListEditor : UserControl
             _actions[i].GroupColor = null;
         }
     });
+
+    /// <summary>Takes only the selected rows out of their group; the other rows stay grouped.</summary>
+    public void RemoveSelectedFromGroup() => ChangeSelected(sel => MacroEditing.RemoveFromGroup(_actions, sel));
 
     /// <summary>Collapses or expands the group of the first selected row. Collapsed groups still run.</summary>
     private void ToggleCollapse()

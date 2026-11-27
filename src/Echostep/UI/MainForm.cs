@@ -32,6 +32,8 @@ internal sealed class MainForm : Form
     private readonly PlaybackOverlay _overlay = new();
     private readonly ComboBox _setTheme, _setAccent, _setTextSize;
     private readonly TextBox _setMacroFolder;
+    private readonly Label _settingsSaved = new() { AutoSize = true, ForeColor = Theme.Success };
+    private readonly System.Windows.Forms.Timer _settingsSavedTimer = new() { Interval = 4000 };
     private string _macroFolder = "";
     private static readonly double[] Speeds = [0.25, 0.5, 1, 1.5, 2, 3, 5, 10];
     private readonly bool _playOnStart, _exitAfterPlay;
@@ -58,6 +60,7 @@ internal sealed class MainForm : Form
     private HookRecorder? _recorder;
     private RecordMode _recordMode;
     private int _recordInsertAt;
+    private bool _recordJoinGroup;
     private bool _restoreAfterRecording;
     private Player? _player;
     private PlaybackMonitor? _monitor;
@@ -495,9 +498,19 @@ internal sealed class MainForm : Form
         var openFolder = new RoundButton { Text = "Open data folder", AutoSize = true };
         openFolder.Click += (_, _) => Process.Start(new ProcessStartInfo("explorer.exe", $"\"{AppPaths.DataDir}\"") { UseShellExecute = true });
         sg.Header("");
-        sg.Row("", apply, openFolder);
+        sg.Row("", apply, openFolder, _settingsSaved);
+        _settingsSavedTimer.Tick += (_, _) => { _settingsSavedTimer.Stop(); _settingsSaved.Text = ""; };
         sg.Add("", new Label { AutoSize = true, ForeColor = Theme.Muted, Text = $"Settings and pixel rules are kept in {AppPaths.DataDir.TrimEnd('\\')}" });
         sg.Add("", new Label { AutoSize = true, ForeColor = Theme.Muted, Text = $"Echostep {Application.ProductVersion.Split('+')[0]}" });
+        // Hotkeys are saved and switched on the moment a key is pressed in their box, with a confirmation beside it.
+        foreach (var field in new[] { _setStopRecording, _setPause, _setStop, _setPicker, _setWatch })
+        {
+            var f = field;
+            f.ValueChanged += () => SaveHotkey(f);
+            f.CaptureStarted += () => _hotkeys.UnregisterAll();
+            f.CaptureEnded += RegisterHotkeys;
+        }
+        sg.Add("", new Label { AutoSize = true, ForeColor = Theme.Muted, Text = "Hotkeys are saved as soon as you press them. The other settings are saved with Save settings." });
         var tips = new ToolTip();
         tips.SetToolTip(_setStopRecording, "One key (or a combination) that ends a recording. Default: Enter.");
         tips.SetToolTip(_setPause, "One key (or a combination) that pauses and resumes playback. Default: Escape.");
@@ -616,6 +629,7 @@ internal sealed class MainForm : Form
             return;
         _recordMode = mode;
         _recordInsertAt = mode == RecordMode.Append ? _editor.Actions.Count : _editor.InsertIndex;
+        _recordJoinGroup = mode == RecordMode.Insert && _editor.SelectedCount > 0;
         var recorder = new HookRecorder([_stopHotkey, _pickerHotkey, _watchHotkey], _stopRecordingKey);
         recorder.StopRequested += () => BeginInvoke(() => { if (_state == AppState.Recording) StopRecordingOrPlayback(); });
         try
@@ -657,7 +671,7 @@ internal sealed class MainForm : Form
                 if (actions.Count > 0)
                 {
                     if (_recordMode == RecordMode.Replace) _editor.ReplaceAll(actions);
-                    else _editor.InsertRange(_recordInsertAt, actions);
+                    else _editor.InsertRange(_recordInsertAt, actions, joinGroup: _recordJoinGroup);
                     _screenLayout = Native.ScreenLayout(); // stored with the macro, checked before playing
                 }
                 UpdateStartPanel();
@@ -1257,6 +1271,58 @@ internal sealed class MainForm : Form
         LoadSettingsFields();
         RegisterHotkeys();
         SetStatus("Settings saved.");
+        _settingsSaved.Text = "✓ Saved";
+        _settingsSavedTimer.Stop();
+        _settingsSavedTimer.Start();
+    }
+
+    /// <summary>
+    /// Saves one hotkey as soon as it is pressed in its box: checks it is not already used (by another hotkey or a
+    /// macro hotkey), saves the settings and confirms beside the box. A key already in use is refused and the box
+    /// goes back to the saved key.
+    /// </summary>
+    private void SaveHotkey(HotkeyField field)
+    {
+        var s = Program.Settings;
+        var all = new (HotkeyField Box, string Name, Func<string> Get, Action<string> Set)[]
+        {
+            (_setStopRecording, "Stop recording", () => s.StopRecordingKey, v => s.StopRecordingKey = v),
+            (_setPause, "Pause / resume playback", () => s.PauseKey, v => s.PauseKey = v),
+            (_setStop, "Stop everything", () => s.StopHotkey, v => s.StopHotkey = v),
+            (_setPicker, "Color picker", () => s.PickerHotkey, v => s.PickerHotkey = v),
+            (_setWatch, "Pause / resume rules", () => s.WatchHotkey, v => s.WatchHotkey = v),
+        };
+        var me = all.First(x => x.Box == field);
+        if (!Hotkey.TryParse(field.Value, out var key))
+        {
+            field.ShowResult("Not a valid key", ok: false);
+            field.Value = me.Get();
+            return;
+        }
+        if (!key.IsEmpty)
+        {
+            string? usedBy = null;
+            foreach (var other in all)
+                if (other.Box != field && Hotkey.TryParse(other.Get(), out var o) && o == key) usedBy = other.Name;
+            foreach (var mh in s.MacroHotkeys)
+                if (Hotkey.TryParse(mh.Hotkey, out var o) && o == key) usedBy = $"the macro hotkey for {Path.GetFileName(mh.File)}";
+            if (usedBy is not null)
+            {
+                field.ShowResult($"{key} is already used for {usedBy}", ok: false);
+                field.Value = me.Get();
+                return;
+            }
+        }
+        me.Set(field.Value);
+        s.Save(AppPaths.SettingsFile);
+        if (!field.ContainsFocus) RegisterHotkeys(); // otherwise this happens when the box loses focus
+        field.ShowResult(key.IsEmpty
+            ? field == _setStop ? "Removed. Without it, an endless loop can only be stopped from the window." : "Removed"
+            : "Saved", ok: !(key.IsEmpty && field == _setStop));
+        SetStatus(key.IsEmpty ? $"{me.Name} hotkey removed." : $"{me.Name} hotkey set to {key}.");
+        Log.Write(key.IsEmpty ? $"Hotkey: {me.Name} removed." : $"Hotkey: {me.Name} set to {key}.");
+        // Leave the box, so the next key press is not captured again and the hotkeys are switched back on.
+        BeginInvoke(() => { if (field.ContainsFocus) ActiveControl = null; });
     }
 
     private void ShowMacroFolder() =>
@@ -1474,6 +1540,7 @@ internal sealed class MainForm : Form
         _recorder?.Dispose();
         _crosshair.Dispose();
         _overlay.Dispose();
+        _settingsSavedTimer.Dispose();
         _engine.Dispose();
         _hotkeys.Dispose();
         Program.Settings.AfterPlayback = 0;

@@ -59,7 +59,7 @@ and run it from any folder.
 - **Unreadable pixels:** a pixel that can't be read (off-screen, missing window, locked desktop) counts as *no match* and is logged once, not on every poll.
 - **Crosshair:** while a macro plays, a click-through crosshair is drawn around the pixel that Wait for pixel, Wait for pixel change or If pixel is watching. Its centre is open, so it never covers the watched pixel. Turn it off in Settings.
 - **Log tab:** records rule firings, timeouts, playback results and hotkey problems.
-- **Settings tab:** hotkeys, recording thresholds, crosshair, watch on startup and magnifier size.
+- **Settings tab:** hotkeys (click a box and press the keys; it's saved at once and shows ✓ Saved, or says if the key is already in use), recording thresholds, crosshair, watch on startup and magnifier size.
 
 ### Added from the Echostep v1 spec
 Nothing that existed before was removed; where the spec and the existing app disagreed, the existing behaviour stayed and the spec's version was added beside it.
@@ -84,7 +84,7 @@ Nothing that existed before was removed; where the spec and the existing app dis
   - Comment column. Double-click a Label or Comment cell (or F2) to edit it in the list. Renaming a label updates the jumps that pointed at it.
   - *Edit all selected*: one dialog, and only the fields you change are applied to every selected action of that type.
   - Drag rows to reorder. Delete asks first (with *Do not show again*).
-  - Enable/disable rows, row background colors, groups (Ctrl+G / Ctrl+Shift+G) with a color, collapse/expand, and disable/enable for the whole group. Collapsed groups still run.
+  - Enable/disable rows, row background colors, groups (Ctrl+G / Ctrl+Shift+G) with a color, collapse/expand, and disable/enable for the whole group. Collapsed groups still run. Actions added, pasted or recorded *inside* a group (between two of its rows) join it; ones added just before or after it stay outside. To put rows into a group, right-click → **Add to group above** / **Add to group below**, or select the group together with the new rows and press **Ctrl+G** (the group grows and keeps its color). **Remove from group** takes just the selected rows out.
   - Find (Ctrl+F): find next, find previous, or select every matching row, in all parameters or one. Tick *Replace* in the dialog (or press Ctrl+H) to replace one or all. Go to line (Alt+G).
   - Line numbers can be hidden. Drag a column header divider to resize a column. Columns share the width in proportion, so they shrink and grow with the window, and the layout is remembered (in the Rules list too).
   - Every time setting (waits, timeouts, move durations, Repeat for a length of time, rule check/hold/cooldown, the recording wait threshold) takes an amount and a unit: milliseconds, seconds, minutes or hours, with decimals allowed. Files still store milliseconds; a time opens in the largest unit that shows it as a whole number (5000 ms opens as 5 seconds). Wait keeps the unit you chose.
@@ -143,6 +143,9 @@ Dark theme throughout: dark title bar, rounded buttons and cards, a ribbon with 
 | Ctrl+Alt+Esc | Stop recording or playback. Also halts running rule actions and turns watching off. |
 | Ctrl+Alt+P | Color picker. |
 | Ctrl+Alt+W | Pause or resume rules. |
+
+To change one, open Settings, click its box and press the new key or combination. It's saved straight away, and
+"✓ Saved" appears beside it. A key that's already used by another hotkey is refused, with a note saying where it's used.
 
 ## File formats
 

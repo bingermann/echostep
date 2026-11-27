@@ -8,7 +8,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <RootNamespace>Echostep</RootNamespace>
     <AssemblyName>Echostep</AssemblyName>
-    <Version>0.4.8</Version>
+    <Version>0.4.9</Version>
     <Product>Echostep</Product>
     <!-- The name Task Manager, Windows Search and "Open with" show (the EXE's file description). -->
     <AssemblyTitle>Echostep</AssemblyTitle>

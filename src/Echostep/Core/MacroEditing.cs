@@ -173,7 +173,71 @@ public static class MacroEditing
         return (first, last);
     }
 
-    /// <summary>A group id not used by any action yet.</summary>
+    /// <summary>
+    /// The group that rows inserted at <paramref name="at"/> join: only when they land inside a group, between two of its
+    /// rows. Rows added just before its first row or just after its last row stay outside it (use Add to group for that).
+    /// </summary>
+    public static (string Id, string? Color)? GroupForInsert(IReadOnlyList<MacroAction> actions, int at) =>
+        at > 0 && at < actions.Count && actions[at - 1].Group is { } id && actions[at].Group == id
+            ? (id, actions[at - 1].GroupColor)
+            : null;
+
+    /// <summary>The group right above row <paramref name="first"/> (above: true) or right below row <paramref name="last"/>.</summary>
+    public static (string Id, string? Color)? AdjacentGroup(IReadOnlyList<MacroAction> actions, int first, int last, bool above)
+    {
+        var i = above ? first - 1 : last + 1;
+        return i >= 0 && i < actions.Count && actions[i].Group is { } id ? (id, actions[i].GroupColor) : null;
+    }
+
+    /// <summary>
+    /// The one existing group among rows <paramref name="first"/>..<paramref name="last"/>, if exactly one appears there:
+    /// grouping such a selection grows that group instead of starting a new one.
+    /// </summary>
+    public static (string Id, string? Color)? SingleGroupIn(IReadOnlyList<MacroAction> actions, int first, int last)
+    {
+        (string Id, string? Color)? found = null;
+        for (var i = Math.Max(0, first); i <= last && i < actions.Count; i++)
+        {
+            if (actions[i].Group is not { } id) continue;
+            if (found is null) found = (id, actions[i].GroupColor);
+            else if (found.Value.Id != id) return null;
+        }
+        return found;
+    }
+
+    /// <summary>Puts rows into a group (replacing any group they had).</summary>
+    public static void JoinGroup(IEnumerable<MacroAction> rows, (string Id, string? Color) group)
+    {
+        foreach (var a in rows)
+        {
+            a.Group = group.Id;
+            a.GroupColor = group.Color;
+        }
+    }
+
+    /// <summary>
+    /// Takes the given rows out of their groups and leaves the rest grouped. When that splits a group in two,
+    /// the lower part gets its own id (same color), so the two parts collapse and recolor separately.
+    /// </summary>
+    public static void RemoveFromGroup(IReadOnlyList<MacroAction> actions, IEnumerable<int> rows)
+    {
+        foreach (var i in rows)
+            if (i >= 0 && i < actions.Count)
+            {
+                actions[i].Group = null;
+                actions[i].GroupColor = null;
+            }
+        var seen = new HashSet<string>();
+        for (var i = 0; i < actions.Count; i++)
+        {
+            if (actions[i].Group is not { } id || (i > 0 && actions[i - 1].Group == id)) continue; // not the start of a run
+            if (seen.Add(id)) continue; // first run of this id keeps it
+            var fresh = NewGroupId(actions);
+            for (var j = i; j < actions.Count && actions[j].Group == id; j++) actions[j].Group = fresh;
+            seen.Add(fresh);
+        }
+    }
+
     public static string NewGroupId(IReadOnlyList<MacroAction> actions)
     {
         var used = actions.Select(a => a.Group).Where(g => g is not null).ToHashSet();

@@ -1099,6 +1099,39 @@ Test("Wheel turns one notch at a time", () =>
     Eq("Scroll up 1 notch", new WheelAction { Value = 120 }.Parameters, "one notch");
 });
 
+Test("New rows join the group they are inserted into; Remove from group splits cleanly", () =>
+{
+    List<MacroAction> a =
+    [
+        new WaitAction { Ms = 1 },
+        new WaitAction { Ms = 2, Group = "g1", GroupColor = "#263F66" },
+        new WaitAction { Ms = 3, Group = "g1", GroupColor = "#263F66" },
+        new WaitAction { Ms = 4, Group = "g1", GroupColor = "#263F66" },
+        new WaitAction { Ms = 5 },
+    ];
+    Eq(null, MacroEditing.GroupForInsert(a, 1), "just before the group: stays outside");
+    Eq(("g1", "#263F66"), MacroEditing.GroupForInsert(a, 2), "inside the group");
+    Eq(("g1", "#263F66"), MacroEditing.GroupForInsert(a, 3), "inside the group, lower");
+    Eq(null, MacroEditing.GroupForInsert(a, 4), "just after the group's last row: stays outside");
+    Eq(null, MacroEditing.GroupForInsert(a, 5), "at the very end: no group");
+    Eq(("g1", "#263F66"), MacroEditing.AdjacentGroup(a, 4, 4, above: true), "the group right above row 4");
+    Eq(("g1", "#263F66"), MacroEditing.AdjacentGroup(a, 0, 0, above: false), "the group right below row 0");
+    Eq(null, MacroEditing.AdjacentGroup(a, 1, 3, above: true), "nothing grouped above the group");
+    Eq(("g1", "#263F66"), MacroEditing.SingleGroupIn(a, 1, 4), "a group plus a row after it: grow that group");
+    Eq(null, MacroEditing.SingleGroupIn(a, 4, 4), "no group in an ungrouped row");
+    var added = new WaitAction { Ms = 9 };
+    MacroEditing.JoinGroup([added], MacroEditing.GroupForInsert(a, 3)!.Value);
+    a.Insert(3, added);
+    Eq((1, 4), MacroEditing.GroupRange(a, 3), "the group now spans rows 1–4");
+    Check(added.Group == "g1" && added.GroupColor == "#263F66", "takes the group's id and color");
+
+    MacroEditing.RemoveFromGroup(a, [2]);
+    Check(a[2].Group is null, "removed row has no group");
+    Eq((1, 1), MacroEditing.GroupRange(a, 1), "upper part keeps g1");
+    Eq((3, 4), MacroEditing.GroupRange(a, 3), "lower part is its own group");
+    Check(a[3].Group != "g1" && a[3].GroupColor == "#263F66", "lower part: new id, same color");
+});
+
 Console.WriteLine();
 Console.WriteLine(failures == 0 ? $"All {passed} checks passed." : $"{failures} FAILED, {passed} passed.");
 return failures == 0 ? 0 : 1;
